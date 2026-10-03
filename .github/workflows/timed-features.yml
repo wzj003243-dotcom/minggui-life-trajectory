@@ -1,7 +1,9 @@
 name: Timed BaZi features
 
 on:
-  pull_request:
+  push:
+    branches:
+      - "data-run-timed-features"
     paths:
       - "research/acquire/TRIGGER_TIMED_FEATURES.md"
 
