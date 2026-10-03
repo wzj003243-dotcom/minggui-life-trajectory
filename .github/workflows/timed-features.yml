@@ -1,0 +1,42 @@
+name: Timed BaZi features
+
+on:
+  pull_request:
+    paths:
+      - "research/acquire/TRIGGER_TIMED_FEATURES.md"
+
+jobs:
+  timed-features:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Acquire and normalize official Astro sample
+        run: python research/acquire/fetch_astro_sample.py
+      - name: Install BaZi dependency
+        run: pip install lunar_python==1.4.8
+      - name: Build calendar-normalized four-pillar features
+        run: >
+          python research/features/build_bazi_features.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          --mode timed
+          --id-column adb_id
+          --date-column birth_date
+          --time-column birth_time_local
+          --calendar-column calendar
+          --rating-column rodden_rating
+      - name: Show feature report
+        run: cat data/processed/timed/bazi_features_timed.report.json
+      - name: Upload timed features
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-bazi-features
+          path: |
+            data/processed/timed/astro_public_births.csv.gz
+            data/processed/timed/bazi_features_timed.csv.gz
+            data/processed/timed/bazi_features_timed.report.json
+          retention-days: 30
