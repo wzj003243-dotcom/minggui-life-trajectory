@@ -5,6 +5,10 @@ on:
     paths:
       - "research/acquire/TRIGGER.md"
 
+concurrency:
+  group: -github-workflows-public-data-yml-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   public-data:
     runs-on: ubuntu-latest
