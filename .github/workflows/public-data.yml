@@ -8,7 +8,7 @@ on:
 jobs:
   public-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,6 +35,28 @@ jobs:
           --id-column wikidata_id
           --date-column birth_date
           --calendar-column calendar_model
+      - name: Select 8k event-enrichment cohort
+        run: >
+          python research/cohorts/select_event_enrichment_cohort.py
+          data/processed/public/bhht_stratified_100k.csv.gz
+          data/processed/public/canonical_births_100k.csv.gz
+          data/processed/public/event_cohort_8k.csv.gz
+          --target 8000
+      - name: Fetch dated Wikidata life claims for public event cohort
+        run: >
+          python research/acquire/fetch_wikidata_claims_api.py
+          data/processed/public/event_cohort_8k.csv.gz
+          data/processed/public/public_life_claims_8k.csv.gz
+          --ratings ""
+          --id-column wikidata_id
+          --rating-column none
+          --batch-size 35
+      - name: Normalize public claims to life events
+        run: >
+          python research/pipeline/claims_to_life_events.py
+          data/processed/public/public_life_claims_8k.csv.gz
+          data/processed/public/canonical_births_100k.csv.gz
+          data/processed/public/public_life_events_8k.csv.gz
       - name: Show reports
         if: always()
         run: |
@@ -44,6 +66,9 @@ jobs:
           cat data/processed/public/wikidata_birth_assertions_100k.report.json || true
           cat data/processed/public/canonical_births_100k.report.json || true
           cat data/processed/public/bazi_features_100k.report.json || true
+          cat data/processed/public/event_cohort_8k.report.json || true
+          cat data/processed/public/public_life_claims_8k.report.json || true
+          cat data/processed/public/public_life_events_8k.report.json || true
       - name: Upload processed public cohort
         if: always()
         uses: actions/upload-artifact@v4
