@@ -26,8 +26,42 @@ export type CalibrationAnswers = {
   mobility: number;
 };
 
+export type PastEventType =
+  | "migration"
+  | "education"
+  | "career"
+  | "relationship"
+  | "family"
+  | "recognition"
+  | "project"
+  | "setback";
+
+export type PastEvent = {
+  id: string;
+  age: number;
+  type: PastEventType;
+  note: string;
+};
+
+export const pastEventLabels: Record<PastEventType, string> = {
+  migration: "迁移 / 搬家 / 出国",
+  education: "升学 / 转学 / 学业转向",
+  career: "工作 / 职业转向",
+  relationship: "重要关系变化",
+  family: "家庭结构 / 责任变化",
+  recognition: "获奖 / 成名 / 被认可",
+  project: "长期项目 / 代表作",
+  setback: "明显低谷 / 重大失败",
+};
+
 function logit(p: number) { return Math.log(p / (1 - p)); }
 function sigmoid(x: number) { return 1 / (1 + Math.exp(-x)); }
+
+function applyDelta(base: TraitScores, delta: TraitScores): TraitScores {
+  return Object.fromEntries(
+    Object.entries(base).map(([k, p]) => [k, clamp(sigmoid(logit(p) + delta[k as TraitKey]))])
+  ) as TraitScores;
+}
 
 export function calibrate(prior: TraitScores, a: CalibrationAnswers): TraitScores {
   const delta: TraitScores = { exploration: 0, execution: 0, structure: 0, stability: 0, expression: 0 };
@@ -47,10 +81,23 @@ export function calibrate(prior: TraitScores, a: CalibrationAnswers): TraitScore
   if (a.biggestFear === "status") delta.expression += .18;
   if (a.biggestFear === "relationship") delta.stability += .12;
   if (a.biggestFear === "wasted") { delta.execution += .10; delta.exploration += .10; }
+  return applyDelta(prior, delta);
+}
 
-  return Object.fromEntries(
-    Object.entries(prior).map(([k, p]) => [k, clamp(sigmoid(logit(p) + delta[k as TraitKey]))])
-  ) as TraitScores;
+export function calibratePastEvents(base: TraitScores, events: PastEvent[]): TraitScores {
+  const delta: TraitScores = { exploration: 0, execution: 0, structure: 0, stability: 0, expression: 0 };
+  for (const e of events) {
+    const early = e.age <= 22 ? 1.15 : 1;
+    if (e.type === "migration") { delta.exploration += .22 * early; delta.stability -= .08; }
+    if (e.type === "education") { delta.exploration += .13; delta.structure += .07; }
+    if (e.type === "career") { delta.exploration += .15; delta.execution += .08; }
+    if (e.type === "relationship") { delta.stability += .04; delta.expression += .05; }
+    if (e.type === "family") { delta.stability += .10; delta.structure += .05; }
+    if (e.type === "recognition") { delta.expression += .16; delta.execution += .14; }
+    if (e.type === "project") { delta.execution += .18; delta.structure += .10; }
+    if (e.type === "setback") { delta.stability -= .08; delta.exploration += .05; }
+  }
+  return applyDelta(base, delta);
 }
 
 export const traitLabels: Record<TraitKey, { zh: string; desc: string }> = {
