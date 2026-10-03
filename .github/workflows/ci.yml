@@ -34,3 +34,5 @@ jobs:
         run: find research -name '*.py' -print0 | xargs -0 python -m py_compile
       - name: Smoke test cutoff / target / leakage pipeline
         run: python research/tests/smoke_pipeline.py
+      - name: Smoke test event normalization pipeline
+        run: python research/tests/smoke_event_pipeline.py
