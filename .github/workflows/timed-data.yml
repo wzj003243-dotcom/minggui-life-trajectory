@@ -5,6 +5,10 @@ on:
     paths:
       - "research/acquire/TRIGGER_TIMED.md"
 
+concurrency:
+  group: -github-workflows-timed-data-yml-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   timed-cohort:
     runs-on: ubuntu-latest
