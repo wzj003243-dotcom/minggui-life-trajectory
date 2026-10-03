@@ -41,7 +41,7 @@ def read_candidates(path: Path, limit: int):
 
 def sparql_batch(qids, retries=6):
     values=" ".join("wd:"+q for q in qids)
-    query=f"""SELECT ?person ?birth ?precision ?rank (SAMPLE(?bp) AS ?birthplace) WHERE {{
+    query=f"""SELECT ?person ?birth ?precision ?calendar ?rank (SAMPLE(?bp) AS ?birthplace) WHERE {{
       VALUES ?person {{ {values} }}
       ?person p:P569 ?statement .
       ?statement psv:P569 ?value ;
