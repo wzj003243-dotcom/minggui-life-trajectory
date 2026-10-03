@@ -1,9 +1,9 @@
 """Stream a local Wikidata JSON dump into a narrow MingGui person backbone.
 
-Why a dump?
-Wikidata recommends dumps rather than WDQS when the desired result set is very large.
-This parser preserves birth time precision and multiple source claims instead of flattening
-everything into one date.
+Large cohorts should use dumps rather than WDQS. This extractor preserves:
+- multiple birth/death assertions and precision
+- source statement rank/reference counts
+- structured, temporally-qualified claims that can become timeline candidates
 
 Input examples:
   latest-all.json.bz2
@@ -12,15 +12,22 @@ Input examples:
 
 Output:
   data/raw/wikidata/person_backbone.ndjson
-
-No third-party Python dependencies are required.
 """
 from __future__ import annotations
 import bz2, gzip, json, sys
 from pathlib import Path
 from typing import Iterable, TextIO
 
-KEEP_PROPERTIES = ["P31","P569","P570","P19","P21","P27","P106","P69","P166"]
+STRUCTURED_PROPERTIES = {
+    "P69": "education.affiliation",
+    "P108": "career.employer",
+    "P39": "career.position",
+    "P463": "organization.member",
+    "P551": "migration.residence",
+    "P166": "recognition.award",
+    "P26": "relationship.spouse",
+    "P1416": "organization.affiliation",
+}
 
 def open_text(path: Path) -> TextIO:
     if path.suffix == ".bz2":
@@ -29,31 +36,67 @@ def open_text(path: Path) -> TextIO:
         return gzip.open(path, "rt", encoding="utf-8")
     return path.open("r", encoding="utf-8")
 
+def qid_from_snak(snak: dict) -> str | None:
+    value=snak.get("datavalue",{}).get("value")
+    if isinstance(value,dict) and value.get("entity-type")=="item":
+        return value.get("id")
+    return None
+
 def qids_from_claim(entity: dict, prop: str) -> list[str]:
     out=[]
     for claim in entity.get("claims",{}).get(prop,[]):
-        value=claim.get("mainsnak",{}).get("datavalue",{}).get("value")
-        if isinstance(value,dict) and value.get("entity-type")=="item":
-            qid=value.get("id")
-            if qid: out.append(qid)
+        qid=qid_from_snak(claim.get("mainsnak",{}))
+        if qid: out.append(qid)
     return sorted(set(out))
+
+def time_value_from_snak(snak: dict):
+    value=snak.get("datavalue",{}).get("value")
+    if isinstance(value,dict) and "time" in value:
+        return {
+            "time":value.get("time"),
+            "precision":value.get("precision"),
+            "calendar_model":value.get("calendarmodel"),
+        }
+    return None
 
 def time_assertions(entity: dict, prop: str) -> list[dict]:
     rows=[]
     for claim in entity.get("claims",{}).get(prop,[]):
-        snak=claim.get("mainsnak",{})
-        dv=snak.get("datavalue",{})
-        value=dv.get("value")
-        if not isinstance(value,dict) or "time" not in value:
-            continue
+        value=time_value_from_snak(claim.get("mainsnak",{}))
+        if not value: continue
         rows.append({
-            "time":value.get("time"),
-            "precision":value.get("precision"),
-            "calendar_model":value.get("calendarmodel"),
+            **value,
             "rank":claim.get("rank"),
             "reference_count":len(claim.get("references",[])),
             "statement_id":claim.get("id"),
         })
+    return rows
+
+def qualifier_times(claim: dict, prop: str) -> list[dict]:
+    out=[]
+    for snak in claim.get("qualifiers",{}).get(prop,[]):
+        t=time_value_from_snak(snak)
+        if t: out.append(t)
+    return out
+
+def structured_statements(entity: dict) -> list[dict]:
+    rows=[]
+    claims=entity.get("claims",{})
+    for prop, semantic_type in STRUCTURED_PROPERTIES.items():
+        for claim in claims.get(prop,[]):
+            qid=qid_from_snak(claim.get("mainsnak",{}))
+            if not qid: continue
+            rows.append({
+                "property":prop,
+                "semantic_type":semantic_type,
+                "value_qid":qid,
+                "start_times":qualifier_times(claim,"P580"),
+                "end_times":qualifier_times(claim,"P582"),
+                "point_times":qualifier_times(claim,"P585"),
+                "rank":claim.get("rank"),
+                "reference_count":len(claim.get("references",[])),
+                "statement_id":claim.get("id"),
+            })
     return rows
 
 def label(entity: dict, lang: str) -> str | None:
@@ -75,6 +118,7 @@ def compact(entity: dict) -> dict:
         "occupation_ids":qids_from_claim(entity,"P106"),
         "education_ids":qids_from_claim(entity,"P69"),
         "award_ids":qids_from_claim(entity,"P166"),
+        "structured_statements":structured_statements(entity),
     }
 
 def iter_entities(f: Iterable[str]):
