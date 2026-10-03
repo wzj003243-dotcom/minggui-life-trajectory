@@ -1,9 +1,7 @@
 """Acquire only the official Astro-Databank free C sample and normalize public birth fields."""
 from __future__ import annotations
 import hashlib, urllib.request
-from pathlib import Path
-from research.normalize.public_cohorts import normalize_astro
-
+from pathlib import Path\nimport sys\nsys.path.insert(0, str(Path(__file__).resolve().parents[2]))\nfrom research.normalize.public_cohorts import normalize_astro\n
 URL="https://www.astro.com/adbexport/c_sample.zip"
 EXPECTED_SHA256="da4a0638434dad80f1ff028e3ac898c4a9e3d2f7bb4a665d2086d5c3770844e1"
 
