@@ -97,6 +97,12 @@ jobs:
           data/processed/fast/public_life_events_structured_8k.csv.gz
           data/processed/fast/public_life_events_creation_8k.csv.gz
 
+      - name: Audit timeline coverage
+        run: >
+          python research/quality/timeline_coverage.py
+          data/processed/fast/public_life_events_8k.csv.gz
+          data/processed/fast/timeline_coverage_8k.csv.gz
+
       - name: Resolve event subject semantics
         run: >
           python research/acquire/resolve_event_subjects.py
