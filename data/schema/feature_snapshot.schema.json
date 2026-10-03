@@ -1,0 +1,20 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://minggui.dev/schema/feature-snapshot.v1.json",
+  "title":"MingGuiFeatureSnapshot",
+  "type":"object",
+  "required":["snapshot_id","person_id","information_cutoff","feature_spec_version","features"],
+  "properties":{
+    "snapshot_id":{"type":"string"},
+    "person_id":{"type":"string"},
+    "information_cutoff":{"type":"string"},
+    "cutoff_age":{"type":["number","null"]},
+    "feature_spec_version":{"type":"string"},
+    "birth_assertion_id":{"type":["string","null"]},
+    "included_event_ids":{"type":"array","items":{"type":"string"},"uniqueItems":true},
+    "features":{"type":"object","additionalProperties":{"type":["number","string","boolean","null"]}},
+    "leakage_audit_passed":{"type":"boolean"},
+    "created_at":{"type":"string"}
+  },
+  "additionalProperties":false
+}
