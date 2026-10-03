@@ -90,7 +90,7 @@ def astro():
     except zipfile.BadZipFile as e:
         rows["c_sample.zip"]["zip_error"]=str(e)
         raise
-    return rows
+    return {"status":"ok","files":rows}
 
 def bhht():
     meta_url,candidates=dataverse_file(
@@ -121,6 +121,6 @@ report_path.write_text(json.dumps(REPORT,indent=2,ensure_ascii=False),encoding="
 print(json.dumps(REPORT,indent=2,ensure_ascii=False))
 
 # Pantheon and the official Astro sample are expected to work. BHHT may be anti-bot blocked.
-required=("pantheon","astro_databank_free")
+required=("pantheon","astro_databank_free","bhht_cross_verified")
 bad=[x for x in required if REPORT["sources"][x].get("status")!="ok"]
 raise SystemExit(1 if bad else 0)
