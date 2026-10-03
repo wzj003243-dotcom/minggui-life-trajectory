@@ -1,7 +1,7 @@
 name: Wikidata identifier probe
 on:
   push:
-    branches: ["data-run-id-probe"]
+    branches: ["data-run-id-probe*"]
     paths: ["research/acquire/TRIGGER_ID_PROBE.md"]
 jobs:
   probe:
