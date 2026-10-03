@@ -55,6 +55,12 @@ jobs:
           --limit 3000
           --max-works-per-author 500
 
+      - name: Build yearly academic state vectors
+        run: >
+          python research/pipeline/build_academic_year_states.py
+          data/processed/academic/openalex/academic_events.csv.gz
+          data/processed/academic/openalex/academic_year_states.csv.gz
+
       - name: Show reports
         if: always()
         run: |
