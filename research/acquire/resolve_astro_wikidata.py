@@ -7,7 +7,7 @@ The resolver groups pages by Wikipedia language/host and asks pageprops for wiki
 It does not scrape article HTML.
 """
 from __future__ import annotations
-import argparse, csv, gzip, json, time, urllib.parse, urllib.request
+import argparse, csv, gzip, json, random, time, urllib.parse, urllib.request, urllib.error
 from collections import defaultdict
 from pathlib import Path
 
@@ -26,21 +26,34 @@ def parse_wiki(url: str):
     except Exception:
         return None
 
-def query(host: str, titles: list[str]):
+def query(host: str, titles: list[str], retries=7):
     endpoint=f"https://{host}/w/api.php"
     params={
-      "action":"query","format":"json","formatversion":"2","redirects":"1",
+      "action":"query","format":"json","formatversion":"2","redirects":"1","maxlag":"5",
       "prop":"pageprops","ppprop":"wikibase_item","titles":"|".join(titles)
     }
-    req=urllib.request.Request(endpoint+"?"+urllib.parse.urlencode(params),headers={"User-Agent":UA})
-    with urllib.request.urlopen(req,timeout=60) as r:
-        return json.load(r)
+    body=urllib.parse.urlencode(params).encode()
+    for attempt in range(retries):
+        req=urllib.request.Request(endpoint,data=body,headers={
+          "User-Agent":UA,"Content-Type":"application/x-www-form-urlencoded"
+        })
+        try:
+            with urllib.request.urlopen(req,timeout=90) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            retry=e.headers.get("Retry-After")
+            delay=float(retry) if retry and retry.isdigit() else min(45,2**attempt+random.random())
+            if e.code not in (429,500,502,503,504) or attempt==retries-1: raise
+            time.sleep(delay)
+        except Exception:
+            if attempt==retries-1: raise
+            time.sleep(min(45,2**attempt+random.random()))
 
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("input")
     ap.add_argument("output")
-    ap.add_argument("--batch-size",type=int,default=40)
+    ap.add_argument("--batch-size",type=int,default=35)\n    ap.add_argument("--sleep",type=float,default=.6)
     args=ap.parse_args()
     grouped=defaultdict(list)
     bad=[]
@@ -51,8 +64,8 @@ def main():
             elif row.get("wikipedia_url"): bad.append(row["adb_id"])
 
     out=Path(args.output); out.parent.mkdir(parents=True,exist_ok=True)
-    fields=["adb_id","rodden_rating","wikipedia_host","wikipedia_title","wikipedia_url","wikidata_id","resolution_status"]
-    resolved=0; requested=0
+    fields=["adb_id","rodden_rating","wikipedia_host","wikipedia_title","wikipedia_url","wikidata_id","resolution_status","error"]
+    resolved=0; requested=0; failed=0
     with gzip.open(out,"wt",encoding="utf-8",newline="") as w:
         wr=csv.DictWriter(w,fieldnames=fields); wr.writeheader()
         for host,rows in grouped.items():
@@ -76,20 +89,23 @@ def main():
                         wr.writerow({
                           "adb_id":adb,"rodden_rating":rr,"wikipedia_host":host,
                           "wikipedia_title":title,"wikipedia_url":url,"wikidata_id":qid,
-                          "resolution_status":"resolved" if qid else "no_wikibase_item"
+                          "resolution_status":"resolved" if qid else "no_wikibase_item","error":""
                         })
                 except Exception as e:
+                    failed+=len(batch)
                     for adb,title,url,rr in batch:
                         wr.writerow({
                           "adb_id":adb,"rodden_rating":rr,"wikipedia_host":host,
-                          "wikipedia_title":title,"wikipedia_url":url,"wikidata_id":None,
-                          "resolution_status":"request_failed"
+                          "wikipedia_title":title,"wikipedia_url":url,"wikidata_id":"",
+                          "resolution_status":"request_failed","error":repr(e)[:240]
                         })
-                time.sleep(0.1)
+                w.flush()
+                time.sleep(args.sleep)
     report={
       "wikipedia_links_requested":requested,
       "resolved_wikidata_ids":resolved,
       "resolution_rate":resolved/requested if requested else 0,
+      "request_failed":failed,
       "unparseable_wikipedia_links":len(bad),
       "languages_or_hosts":len(grouped)
     }
