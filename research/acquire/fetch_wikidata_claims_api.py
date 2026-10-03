@@ -4,7 +4,7 @@ This is the preferred route for a few thousand known people: the API returns cla
 batches and we parse temporal qualifiers locally, avoiding expensive SPARQL aggregation.
 """
 from __future__ import annotations
-import argparse,csv,gzip,json,random,time,urllib.parse,urllib.request
+import argparse,csv,gzip,json,random,time,urllib.parse,urllib.request,urllib.error
 from pathlib import Path
 
 API="https://www.wikidata.org/w/api.php"
@@ -33,18 +33,25 @@ def read_people(path:Path,ratings:set[str]):
 
 def get_entities(qids,retries=6):
     params={
-      "action":"wbgetentities","format":"json","formatversion":"2",
+      "action":"wbgetentities","format":"json","formatversion":"2","maxlag":"5",
       "ids":"|".join(qids),"props":"claims"
     }
-    url=API+"?"+urllib.parse.urlencode(params)
-    req=urllib.request.Request(url,headers={"User-Agent":UA})
+    body=urllib.parse.urlencode(params).encode()
     for a in range(retries):
+        req=urllib.request.Request(API,data=body,headers={
+          "User-Agent":UA,"Content-Type":"application/x-www-form-urlencoded"
+        })
         try:
             with urllib.request.urlopen(req,timeout=90) as r:
                 return json.load(r).get("entities",{})
+        except urllib.error.HTTPError as e:
+            retry=e.headers.get("Retry-After")
+            delay=float(retry) if retry and retry.isdigit() else min(45,2**a+random.random())
+            if e.code not in (429,500,502,503,504) or a==retries-1: raise
+            time.sleep(delay)
         except Exception:
             if a==retries-1: raise
-            time.sleep(min(20,2**a)+random.random())
+            time.sleep(min(45,2**a+random.random()))
 
 def item_id_from_snak(snak):
     v=snak.get("datavalue",{}).get("value")
@@ -66,7 +73,7 @@ def main():
     ap.add_argument("input")
     ap.add_argument("output")
     ap.add_argument("--ratings",default="AA,A,B")
-    ap.add_argument("--batch-size",type=int,default=50)
+    ap.add_argument("--batch-size",type=int,default=35)\n    ap.add_argument("--sleep",type=float,default=.55)
     args=ap.parse_args()
     ratings={x for x in args.ratings.split(",") if x}
     people=read_people(Path(args.input),ratings)
@@ -108,7 +115,7 @@ def main():
                         rows+=1;people_with.add(q)
             if (i//args.batch_size+1)%10==0:
                 print(f"people_done={min(i+args.batch_size,len(qids))}/{len(qids)} dated_claims={rows}",flush=True)
-            time.sleep(.08)
+            w.flush();time.sleep(args.sleep)
     report={
       "input_people":len(qids),"people_with_dated_claims":len(people_with),
       "dated_claim_rows":rows,"batch_failures_people":failures,"properties":PROPS
