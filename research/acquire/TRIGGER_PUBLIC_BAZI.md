@@ -1,0 +1,1 @@
+# Public BaZi rebuild\n\nv1: frozen 82,056 exact-date cohort -> objective three-pillar features.\n
