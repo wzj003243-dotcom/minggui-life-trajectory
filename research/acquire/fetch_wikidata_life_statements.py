@@ -44,8 +44,7 @@ def query_batch(qids,retries=6):
       OPTIONAL {{ ?statement pq:P580 ?start . }}
       OPTIONAL {{ ?statement pq:P582 ?end . }}
       OPTIONAL {{ ?statement pq:P585 ?point . }}
-      OPTIONAL {{ ?statement prov:wasDerivedFrom ?ref . }}
-    }}
+      OPTIONAL {{ ?statement prov:wasDerivedFrom ?ref . }}\n      FILTER(BOUND(?start) || BOUND(?end) || BOUND(?point))\n    }}
     GROUP BY ?person ?property ?value ?start ?end ?point ?rank"""
     data=urllib.parse.urlencode({"query":query,"format":"json"}).encode()
     req=urllib.request.Request(ENDPOINT,data=data,method="POST",headers={
