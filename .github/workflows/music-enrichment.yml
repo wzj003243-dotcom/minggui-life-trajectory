@@ -47,6 +47,11 @@ jobs:
           data/processed/music/musicbrainz
           --id-column wikidata_code
           --limit 3000
+      - name: Build yearly music state vectors
+        run: >
+          python research/pipeline/build_music_year_states.py
+          data/processed/music/musicbrainz/music_events.csv.gz
+          data/processed/music/musicbrainz/music_year_states.csv.gz
       - name: Show reports
         if: always()
         run: |
