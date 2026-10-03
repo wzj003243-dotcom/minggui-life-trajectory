@@ -1,0 +1,61 @@
+{
+  "profile_date": "2026-10-03",
+  "sources": {
+    "pantheon_1": {
+      "rows": 11341,
+      "bytes": 2176393,
+      "sha256": "b5c7eb6830e66e796fe91b30a543041e24de7aeb794337dcd03eac786116284a",
+      "md5_verified": "c5ba6e1e5e5352f5469801f883e1559a",
+      "birth_year_nonmissing": 11337,
+      "birth_year_range": [-3500, 2005],
+      "coordinates_nonmissing": 10294,
+      "note": "Strong manually verified occupation/geography/notability benchmark; source file is year-level for birth date."
+    },
+    "bhht_cross_verified": {
+      "rows": 2291817,
+      "bytes": 261545417,
+      "sha256": "fe44aa6f97cf9f6c12d040137f92a9f4d0fd1f50e28f7f5d80eeae29b487828d",
+      "wikidata_qids": 2291817,
+      "birth_year_nonmissing": 2095898,
+      "pantheon_linked": 11790,
+      "regions": {
+        "Europe": 1248310,
+        "America": 626491,
+        "Asia": 215085,
+        "Oceania": 81151,
+        "Africa": 67213,
+        "missing": 53567
+      },
+      "level1_occupation": {
+        "Culture": 702330,
+        "Sports/Games": 633450,
+        "Leadership": 619146,
+        "Discovery/Science": 273229,
+        "Other": 48245,
+        "Missing": 15417
+      },
+      "note": "Main large biography index. Exact month/day must be enriched from Wikidata P569 using preserved QIDs."
+    },
+    "astro_databank_free_c_sample": {
+      "rows": 6036,
+      "bytes_zip": 2752783,
+      "sha256_zip": "da4a0638434dad80f1ff028e3ac898c4a9e3d2f7bb4a665d2086d5c3770844e1",
+      "rodden": {
+        "AA": 3825,
+        "A": 1161,
+        "B": 233,
+        "C": 426,
+        "DD": 52,
+        "X": 338,
+        "AX": 1
+      },
+      "primary_AA_A_B": 5219,
+      "wikipedia_links": 4580,
+      "calendar": {
+        "gregorian": 5940,
+        "julian": 96
+      },
+      "note": "Best current timed-birth cohort. Normalize public_data only; never redistribute research_data."
+    }
+  }
+}
