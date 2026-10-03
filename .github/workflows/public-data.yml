@@ -24,6 +24,17 @@ jobs:
         run: python research/acquire/fetch_wikidata_birth_assertions.py data/processed/public/bhht_stratified_100k.csv.gz data/processed/public/wikidata_birth_assertions_100k.csv.gz --limit 0 --batch-size 150
       - name: Canonicalize conflict-safe birth table
         run: python research/pipeline/canonicalize_births.py data/processed/public/wikidata_birth_assertions_100k.csv.gz data/processed/public/canonical_births_100k.csv.gz
+      - name: Install BaZi feature dependency
+        run: pip install lunar_python==1.4.8
+      - name: Build objective three-pillar features
+        run: >
+          python research/features/build_bazi_features.py
+          data/processed/public/canonical_births_100k.csv.gz
+          data/processed/public/bazi_features_100k.csv.gz
+          --mode date
+          --id-column wikidata_id
+          --date-column birth_date
+          --calendar-column calendar_model
       - name: Show reports
         if: always()
         run: |
@@ -32,6 +43,7 @@ jobs:
           cat data/processed/public/bhht_stratified_100k.report.json || true
           cat data/processed/public/wikidata_birth_assertions_100k.report.json || true
           cat data/processed/public/canonical_births_100k.report.json || true
+          cat data/processed/public/bazi_features_100k.report.json || true
       - name: Upload processed public cohort
         if: always()
         uses: actions/upload-artifact@v4
