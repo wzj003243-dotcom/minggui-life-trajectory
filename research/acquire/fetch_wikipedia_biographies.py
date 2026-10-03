@@ -39,7 +39,7 @@ def read_people(path,id_column,limit):
     rows=[]
     with gzip.open(path,"rt",encoding="utf-8",newline="") as f:
         for r in csv.DictReader(f):
-            q=(r.get(id_column) or "").strip()
+            q=(r.get(id_column) or r.get("wikidata_id") or r.get("wikidata_code") or "").strip()
             if q.startswith("Q") and q[1:].isdigit():
                 rows.append((q,r.get("sample_stratum",""),r.get("number_wiki_editions","")))
     rows=sorted(set(rows),key=lambda x:(x[1],int(x[0][1:])))
