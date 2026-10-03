@@ -1,7 +1,9 @@
 name: Timed birth cohort
 
 on:
-  pull_request:
+  push:
+    branches:
+      - "data-run-timed"
     paths:
       - "research/acquire/TRIGGER_TIMED.md"
 
