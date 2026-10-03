@@ -1,0 +1,21 @@
+{
+  "version":"1.0.0",
+  "classes":[
+    {"id":"science_research","label_zh":"科学 / 研究","examples":["physicist","chemist","biologist","mathematician","researcher"]},
+    {"id":"engineering_technology","label_zh":"工程 / 技术","examples":["engineer","computer scientist","inventor","software developer"]},
+    {"id":"medicine_health","label_zh":"医学 / 医疗","examples":["physician","surgeon","nurse","medical researcher"]},
+    {"id":"academia_education","label_zh":"学术 / 教育","examples":["professor","teacher","academic","educator"]},
+    {"id":"arts_literature","label_zh":"艺术 / 文学","examples":["writer","poet","painter","composer","architect"]},
+    {"id":"entertainment_media","label_zh":"娱乐 / 媒体","examples":["actor","musician","director","journalist","presenter"]},
+    {"id":"business_finance","label_zh":"商业 / 金融","examples":["entrepreneur","businessperson","banker","investor"]},
+    {"id":"politics_government","label_zh":"政治 / 公共事务","examples":["politician","head of government","diplomat","civil servant"]},
+    {"id":"law_judiciary","label_zh":"法律 / 司法","examples":["lawyer","judge","jurist"]},
+    {"id":"military","label_zh":"军事","examples":["military officer","general","soldier"]},
+    {"id":"sports","label_zh":"体育","examples":["athlete","footballer","swimmer","coach"]},
+    {"id":"religion_philosophy","label_zh":"宗教 / 哲学","examples":["religious leader","monk","priest","philosopher","theologian"]},
+    {"id":"activism_social","label_zh":"社会运动 / 公益","examples":["activist","humanitarian","reformer"]},
+    {"id":"exploration_adventure","label_zh":"探索 / 冒险","examples":["explorer","astronaut","mountaineer"]},
+    {"id":"other","label_zh":"其他","examples":[]}
+  ],
+  "rule":"Raw source occupations are many-to-many. Preserve original QIDs/labels; taxonomy mapping is a derived, versioned layer and may be uncertain."
+}
