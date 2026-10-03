@@ -1,0 +1,38 @@
+name: Public biography data
+
+on:
+  pull_request:
+    paths:
+      - "research/acquire/TRIGGER.md"
+
+jobs:
+  public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Acquire verified public datasets
+        run: python research/acquire/fetch_public_datasets.py
+      - name: Normalize public cohorts
+        run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/public
+      - name: Fetch precision-aware Wikidata births for first 25k cohort
+        run: python research/acquire/fetch_wikidata_birth_assertions.py data/processed/public/bhht_core.csv.gz data/processed/public/wikidata_birth_assertions_25k.csv.gz --limit 25000 --batch-size 150
+      - name: Show reports
+        if: always()
+        run: |
+          cat data/raw/acquired/acquisition_report.json || true
+          cat data/processed/public/public_cohort_profile.json || true
+          cat data/processed/public/wikidata_birth_assertions_25k.report.json || true
+      - name: Upload processed public cohort
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-processed-public-data
+          path: |
+            data/processed/public/
+            data/raw/acquired/acquisition_report.json
+          retention-days: 14
+          if-no-files-found: warn
