@@ -3,7 +3,7 @@ name: Fast public event cohort
 on:
   push:
     branches:
-      - "data-run-fast-events"
+      - "data-run-fast-events*"
     paths:
       - "research/acquire/TRIGGER_FAST_EVENTS.md"
 
@@ -73,7 +73,34 @@ jobs:
           python research/pipeline/claims_to_life_events.py
           data/processed/fast/public_life_claims_8k.csv.gz
           data/processed/fast/canonical_births_10k.csv.gz
+          data/processed/fast/public_life_events_structured_8k.csv.gz
+
+      - name: Fetch dated notable works
+        run: >
+          python research/acquire/fetch_notable_work_dates.py
+          data/processed/fast/event_cohort_8k.csv.gz
+          data/processed/fast/notable_work_dates_8k.csv.gz
+          --id-column wikidata_id
+
+      - name: Normalize notable works to life events
+        run: >
+          python research/pipeline/notable_works_to_life_events.py
+          data/processed/fast/notable_work_dates_8k.csv.gz
+          data/processed/fast/canonical_births_10k.csv.gz
+          data/processed/fast/public_life_events_creation_8k.csv.gz
+
+      - name: Merge life-event streams
+        run: >
+          python research/pipeline/merge_life_events.py
           data/processed/fast/public_life_events_8k.csv.gz
+          data/processed/fast/public_life_events_structured_8k.csv.gz
+          data/processed/fast/public_life_events_creation_8k.csv.gz
+
+      - name: Resolve event subject semantics
+        run: >
+          python research/acquire/resolve_event_subjects.py
+          data/processed/fast/public_life_events_8k.csv.gz
+          data/processed/fast/event_subject_entities_8k.csv.gz
 
       - name: Install BaZi dependency
         run: pip install lunar_python==1.4.8
