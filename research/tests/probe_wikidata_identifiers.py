@@ -22,5 +22,5 @@ for q in QIDS:
         ]
     print(q,json.dumps(vals,ensure_ascii=False))
 
-from research.acquire.fetch_openalex_academic_events import wikidata_orcids
+import sys\nfrom pathlib import Path\nsys.path.insert(0,str(Path(__file__).resolve().parents[2]))\nfrom research.acquire.fetch_openalex_academic_events import wikidata_orcids
 print("academic_single", {k: sorted(v) for k,v in wikidata_orcids(["Q483086"],batch_size=1).items()})
