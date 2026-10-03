@@ -1,0 +1,88 @@
+{
+  "benchmark_id": "minggui-benchmark-v0.1",
+  "run_date": "2026-10-03",
+  "source_artifact": {
+    "workflow_run_id": 37118108407,
+    "artifact_id": 11271839707,
+    "artifact_digest": "sha256:06a6212ebba7f8a07a1945e248eabe432e8e5838b9dc0eda0d45be46f45e4cb4",
+    "note": "Timed-linked artifact; structured-event portion completed before later notable-work enrichment hit Wikimedia rate limiting."
+  },
+  "cohort": {
+    "birth_verified_timed_people": 3093,
+    "structured_event_people": 1645,
+    "benchmark_people_with_future_event": 1634,
+    "person_cutoff_rows": 5871,
+    "target_counts": {
+      "recognition": 2142,
+      "career": 2069,
+      "relationship": 1045,
+      "other": 615
+    }
+  },
+  "task": "Predict the domain of the next observed structured life event after age cutoffs 18/25/30/40.",
+  "split": "20 repeated 75/25 GroupShuffleSplit by person; a person never appears in both train and test in the same repeat.",
+  "results_20_split": {
+    "reality": {
+      "macro_f1_mean": 0.4285,
+      "macro_f1_std": 0.0149,
+      "accuracy_mean": 0.4718,
+      "balanced_accuracy_mean": 0.4369,
+      "log_loss_mean": 1.2053
+    },
+    "reality_plus_bazi_compact": {
+      "macro_f1_mean": 0.3921,
+      "macro_f1_std": 0.0168,
+      "accuracy_mean": 0.4301,
+      "balanced_accuracy_mean": 0.3996,
+      "log_loss_mean": 1.248
+    },
+    "bazi_compact": {
+      "macro_f1_mean": 0.2692,
+      "macro_f1_std": 0.0173,
+      "accuracy_mean": 0.305,
+      "balanced_accuracy_mean": 0.274,
+      "log_loss_mean": 1.3824
+    },
+    "raw_birth": {
+      "macro_f1_mean": 0.2594,
+      "macro_f1_std": 0.0158,
+      "accuracy_mean": 0.3047,
+      "balanced_accuracy_mean": 0.2711,
+      "log_loss_mean": 1.3433
+    }
+  },
+  "paired_findings": {
+    "reality_plus_bazi_minus_reality_macro_f1_mean": -0.03637543424981808,
+    "reality_plus_bazi_better_than_reality_splits": "0/20",
+    "bazi_compact_minus_raw_birth_macro_f1_mean": 0.009814019431240485,
+    "bazi_compact_better_than_raw_birth_splits": "13/20"
+  },
+  "placebo_5_split_x20": {
+    "bazi_only": {
+      "real_macro_f1_mean": 0.2698,
+      "shuffled_macro_f1_mean": 0.2616,
+      "real_minus_shuffled": 0.0082,
+      "mean_percentile": 0.63
+    },
+    "reality_plus_bazi": {
+      "real_macro_f1_mean": 0.3994,
+      "shuffled_macro_f1_mean": 0.3889,
+      "real_minus_shuffled": 0.0105,
+      "mean_percentile": 0.71
+    }
+  },
+  "interpretation": [
+    "The reality-history baseline is clearly strongest in this first task.",
+    "Adding compact BaZi features reduces out-of-sample performance in every one of the 20 person splits.",
+    "Real BaZi features perform only slightly above decade-stratified shuffled-BaZi placebos on average; this is weak and inconsistent evidence, not a validated predictive signal.",
+    "BaZi-only modestly exceeds raw birth variables on average, but the difference is small and unstable.",
+    "The correct current conclusion is: no useful incremental BaZi signal has been demonstrated yet."
+  ],
+  "limitations": [
+    "Observed Wikidata event sequences are strongly affected by biography/documentation bias.",
+    "Notable people are not representative of the general population.",
+    "The target is next documented event domain, not the true next life event.",
+    "Current splits are person-group random; forward-era and geography holdouts are still required.",
+    "Biography-text and notable-work enrichment were not included in this benchmark."
+  ]
+}
