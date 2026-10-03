@@ -1,0 +1,25 @@
+{
+  "version":"1.0.0",
+  "birth_data":{
+    "astro_databank":{
+      "primary_timed":["AA","A","B"],
+      "sensitivity_only":["C","DD"],
+      "untimed":["X","AAX","AX","BX","CX","DX"],
+      "exclude":["XX"],
+      "rule":"Preserve the original Rodden/data-source rating. Do not convert uncertain times into point estimates."
+    },
+    "wikidata":{
+      "max_time_precision_for_birth_experiments":"day",
+      "signals":["statement_rank","reference_count","date_precision","conflicting_statements"],
+      "rule":"Treat the stored timestamp as a calendar date representation. Never interpret T00:00:00Z as midnight birth."
+    }
+  },
+  "biography_event_confidence":{
+    "structured_referenced":0.9,
+    "structured_unreferenced":0.65,
+    "two_independent_text_sources":0.9,
+    "single_reliable_text_source":0.75,
+    "single_weak_text_source":0.55,
+    "llm_inferred_without_explicit_evidence":0.0
+  }
+}
