@@ -1,0 +1,86 @@
+name: Biography text enrichment
+
+on:
+  push:
+    branches:
+      - "data-run-biography*"
+    paths:
+      - "research/acquire/TRIGGER_BIOGRAPHY.md"
+
+concurrency:
+  group: biography-text-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  biography-text:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Acquire verified public datasets
+        run: python research/acquire/fetch_public_datasets.py
+
+      - name: Normalize BHHT backbone
+        run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/biography
+
+      - name: Select balanced 3k cohort
+        run: >
+          python research/cohorts/select_stratified_bhht.py
+          data/processed/biography/bhht_core.csv.gz
+          data/processed/biography/bhht_stratified_3k.csv.gz
+          --target 3000
+          --min-per-stratum 2
+
+      - name: Fetch precise Wikidata births
+        run: >
+          python research/acquire/fetch_wikidata_birth_assertions.py
+          data/processed/biography/bhht_stratified_3k.csv.gz
+          data/processed/biography/wikidata_birth_assertions_3k.csv.gz
+          --limit 0
+          --batch-size 120
+
+      - name: Canonicalize births
+        run: >
+          python research/pipeline/canonicalize_births.py
+          data/processed/biography/wikidata_birth_assertions_3k.csv.gz
+          data/processed/biography/canonical_births_3k.csv.gz
+
+      - name: Select clean 2k text cohort
+        run: >
+          python research/cohorts/select_event_enrichment_cohort.py
+          data/processed/biography/bhht_stratified_3k.csv.gz
+          data/processed/biography/canonical_births_3k.csv.gz
+          data/processed/biography/text_cohort_2k.csv.gz
+          --target 2000
+
+      - name: Fetch revision-pinned biographies
+        run: >
+          python research/acquire/fetch_wikipedia_biographies.py
+          data/processed/biography/text_cohort_2k.csv.gz
+          data/processed/biography/wikipedia_biographies_2k.jsonl.gz
+          --id-column wikidata_id
+          --limit 2000
+
+      - name: Extract date-bearing timeline candidates
+        run: >
+          python research/extraction/extract_timeline_candidates.py
+          data/processed/biography/wikipedia_biographies_2k.jsonl.gz
+          data/processed/biography/timeline_candidates_2k.csv.gz
+
+      - name: Show reports
+        if: always()
+        run: |
+          find data/processed/biography -maxdepth 1 -name '*.report.json' -print -exec cat {} \; || true
+
+      - name: Upload biography enrichment artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-biography-text-cohort
+          path: data/processed/biography/
+          retention-days: 30
+          if-no-files-found: warn
