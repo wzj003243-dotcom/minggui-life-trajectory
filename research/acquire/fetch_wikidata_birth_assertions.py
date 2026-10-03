@@ -31,7 +31,7 @@ def read_candidates(path: Path, limit: int):
         for x in csv.DictReader(f):
             q=(x.get("wikidata_id") or x.get("wikidata_code") or "").strip()
             birth=(x.get("birth") or "").strip()
-            if not re.fullmatch(r"Q\\d+", q) or not birth:
+            if not (q.startswith("Q") and q[1:].isdigit()) or not birth:
                 continue
             try:
                 rank=float(x.get("ranking_visib_5criteria") or 1e30)
