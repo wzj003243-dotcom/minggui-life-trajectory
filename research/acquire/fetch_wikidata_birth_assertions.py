@@ -81,8 +81,7 @@ def main():
     bhht_year={q:b for _,q,b in candidates}
     out=Path(args.output); out.parent.mkdir(parents=True,exist_ok=True)
     fields=["wikidata_id","birth_time_value","time_precision","statement_rank","birthplace_qid","bhht_birth_year","birth_year_match"]
-    found=set(); counts={9:0,10:0,11:0,"other":0}
-    with gzip.open(out,"wt",encoding="utf-8",newline="") as fw:
+    found=set(); counts={9:0,10:0,11:0,"other":0}\n    precision_people={9:set(),10:set(),11:set(),"other":set()}\n    birth_values={}\n    with gzip.open(out,"wt",encoding="utf-8",newline="") as fw:
         w=csv.DictWriter(fw,fieldnames=fields); w.writeheader()
         for start in range(0,len(candidates),args.batch_size):
             qids=[q for _,q,_ in candidates[start:start+args.batch_size]]
@@ -92,9 +91,7 @@ def main():
                 birth=b.get("birth",{}).get("value")
                 try:p=int(float(b.get("precision",{}).get("value")))
                 except:p=None
-                if p in (9,10,11): counts[p]+=1
-                else: counts["other"]+=1
-                expected=bhht_year.get(q)
+                if p in (9,10,11):\n                    counts[p]+=1; precision_people[p].add(q)\n                else:\n                    counts["other"]+=1; precision_people["other"].add(q)\n                expected=bhht_year.get(q)
                 actual=year_from_wikidata_time(birth)
                 match=None
                 try: match=(actual==int(float(expected)))
@@ -108,18 +105,14 @@ def main():
                   "bhht_birth_year":expected,
                   "birth_year_match":match
                 })
-                found.add(q)
-            if (start//args.batch_size+1)%10==0:
+                found.add(q)\n                birth_values.setdefault(q,set()).add(birth)\n            if (start//args.batch_size+1)%10==0:
                 print(f"batches={start//args.batch_size+1} people_done={min(start+args.batch_size,len(candidates))}/{len(candidates)} unique_found={len(found)} precision11={counts[11]}",flush=True)
             time.sleep(0.12)
     report={
       "requested_people":len(candidates),
       "unique_people_with_birth_assertion":len(found),
-      "precision_counts":{str(k):v for k,v in counts.items()},
-      "day_precision_rate_over_requested":counts[11]/len(candidates) if candidates else 0
-    }
-    report_path=out.with_suffix("").with_suffix(".report.json")
-    report_path.write_text(json.dumps(report,indent=2),encoding="utf-8")
+      "assertion_precision_counts":{str(k):v for k,v in counts.items()},\n      "people_with_precision":{str(k):len(v) for k,v in precision_people.items()},\n      "people_with_multiple_assertions":sum(len(v)>1 for v in birth_values.values()),\n      "people_with_conflicting_birth_values":sum(len(v)>1 for v in birth_values.values()),\n      "people_with_day_precision":len(precision_people[11]),\n      "day_precision_rate_over_requested":len(precision_people[11])/len(candidates) if candidates else 0,\n      "day_precision_rate_over_found":len(precision_people[11])/len(found) if found else 0\n    }
+    stem=out.name[:-7] if out.name.endswith(".csv.gz") else out.stem\n    report_path=out.with_name(stem+".report.json")\n    report_path.write_text(json.dumps(report,indent=2),encoding="utf-8")
     print(json.dumps(report,indent=2))
 
 if __name__=="__main__":
