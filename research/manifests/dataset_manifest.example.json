@@ -1,0 +1,28 @@
+{
+  "dataset_id":"minggui-historical-v0",
+  "created_at":"2026-10-03T00:00:00Z",
+  "git_commit":"REPLACE_WITH_COMMIT",
+  "cohorts":[
+    {
+      "cohort_id":"historical-day-level",
+      "sources":[
+        {"id":"wikidata","snapshot":"REPLACE","license_bucket":"public-domain","sha256":"REPLACE"},
+        {"id":"bhht-2022","snapshot":"REPLACE","license_bucket":"open-attribution","sha256":"REPLACE"}
+      ],
+      "filters":{
+        "minimum_independent_sources":2,
+        "birth_precision":["day"],
+        "minimum_timeline_events":2
+      },
+      "counts":{"people":0,"birth_assertions":0,"life_events":0}
+    }
+  ],
+  "schemas":{
+    "person":"v1",
+    "birth_assertion":"v1",
+    "life_event":"v1",
+    "bazi_features":"v1.0.0",
+    "targets":"v1.0.0"
+  },
+  "notes":"Every published metric should point to an immutable manifest like this."
+}
