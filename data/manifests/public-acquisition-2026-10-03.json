@@ -1,0 +1,75 @@
+{
+  "manifest_version":"1.0.0",
+  "acquired_at":"2026-10-03T07:46:53Z",
+  "github_actions_run_id":37107462395,
+  "sources":{
+    "pantheon_1":{
+      "source":"Harvard Dataverse",
+      "persistent_id":"doi:10.7910/DVN/28201",
+      "file_id":2717642,
+      "filename":"pantheon.tsv",
+      "bytes":2176393,
+      "md5":"c5ba6e1e5e5352f5469801f883e1559a",
+      "sha256":"b5c7eb6830e66e796fe91b30a543041e24de7aeb794337dcd03eac786116284a",
+      "rows_observed":11341,
+      "valid_numeric_birth_year_rows":11337,
+      "birth_year_range_observed":[-3500,2005],
+      "occupation_classes_observed":88,
+      "country_names_observed":315
+    },
+    "bhht_cross_verified":{
+      "source":"Sciences Po Dataverse",
+      "persistent_id":"doi:10.21410/7E4/RDAG3O",
+      "file_id":4432,
+      "filename":"cross-verified-database.csv.gz",
+      "bytes":261545417,
+      "sha256":"fe44aa6f97cf9f6c12d040137f92a9f4d0fd1f50e28f7f5d80eeae29b487828d",
+      "rows_observed":2291817,
+      "birth_year_missing_fraction":0.0855,
+      "birth_place_lat_lon_missing_fraction":0.2564,
+      "gender_missing_fraction":0.0006,
+      "birth_year_range_observed":[-3500,2018],
+      "level1_occupation_counts":{
+        "Culture":702330,
+        "Sports/Games":633450,
+        "Leadership":619146,
+        "Discovery/Science":273229,
+        "Other":48245,
+        "Missing":15417
+      }
+    },
+    "astro_databank_free":{
+      "source":"Astrodienst / Astro-Databank",
+      "sample_json":{
+        "filename":"adb_export_sample.json",
+        "bytes":135729,
+        "sha256":"1b98b664c44e006ea81dcbd6497a2e268bd94a7100428a7ec83e7dd4ed864354"
+      },
+      "c_sample":{
+        "filename":"c_sample.zip",
+        "bytes":2752783,
+        "sha256":"da4a0638434dad80f1ff028e3ac898c4a9e3d2f7bb4a665d2086d5c3770844e1",
+        "inner_file":"c_sample_260919_1519.xml",
+        "rows_observed":6036,
+        "timed_rows_observed":6036,
+        "coordinate_rows_observed":6036,
+        "wikipedia_link_rows_observed":4580,
+        "rodden_rating_counts":{
+          "AA":3825,
+          "A":1161,
+          "B":233,
+          "C":426,
+          "DD":52,
+          "X":338,
+          "AX":1
+        },
+        "primary_timed_research_rows_AA_A_B":5219
+      }
+    }
+  },
+  "interpretation_notes":[
+    "Pantheon and BHHT are mainly year-level birth datasets and therefore are reality-baseline / trajectory cohorts, not sufficient by themselves for day-level BaZi features.",
+    "BHHT Wikidata QIDs are the bridge for recovering source-precision P569 birth assertions.",
+    "Astro-Databank free sample supplies a high-quality timed-birth validation cohort; row-level licensed/restricted content is not committed to this public repository."
+  ]
+}
