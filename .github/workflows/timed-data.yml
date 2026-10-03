@@ -1,0 +1,34 @@
+name: Timed birth cohort
+
+on:
+  pull_request:
+    paths:
+      - "research/acquire/TRIGGER_TIMED.md"
+
+jobs:
+  timed-cohort:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Acquire and normalize official Astro sample
+        run: python research/acquire/fetch_astro_sample.py
+      - name: Resolve Wikipedia pages to Wikidata
+        run: python research/acquire/resolve_astro_wikidata.py data/processed/timed/astro_public_births.csv.gz data/processed/timed/adb_wikidata_links.csv.gz
+      - name: Fetch dated Wikidata life statements for AA/A/B
+        run: python research/acquire/fetch_wikidata_life_statements.py data/processed/timed/adb_wikidata_links.csv.gz data/processed/timed/timed_life_statements.csv.gz --ratings AA,A,B --batch-size 75
+      - name: Show reports
+        if: always()
+        run: |
+          find data/processed/timed -name '*.report.json' -maxdepth 1 -print -exec cat {} \; || true
+      - name: Upload processed timed cohort
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-cohort
+          path: data/processed/timed/
+          retention-days: 14
+          if-no-files-found: warn
