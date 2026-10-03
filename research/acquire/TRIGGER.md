@@ -21,3 +21,5 @@ Seventh run: rebuild with calendar-normalized BaZi features.
 Eighth run: enrich 8k stratified exact-date people with dated life events.
 
 Ninth run: preserve calendar model and rebuild public snapshot.
+
+Seventh run: stable BaZi relation schema.
