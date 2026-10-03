@@ -1,0 +1,61 @@
+name: Biography quick smoke
+
+on:
+  push:
+    branches: ["data-run-biography-smoke*"]
+    paths: ["research/acquire/TRIGGER_BIOGRAPHY_SMOKE.md"]
+
+concurrency:
+  group: biography-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Restore public source cache
+        id: sources
+        uses: actions/cache@v4
+        with:
+          path: data/raw/acquired/
+          key: minggui-public-sources-v1-fe44aa6f
+      - name: Acquire sources if needed
+        if: steps.sources.outputs.cache-hit != 'true'
+        run: python research/acquire/fetch_public_datasets.py
+      - name: Normalize BHHT
+        run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/smoke
+      - name: Select 250 diverse people
+        run: >
+          python research/cohorts/select_stratified_bhht.py
+          data/processed/smoke/bhht_core.csv.gz
+          data/processed/smoke/cohort_250.csv.gz
+          --target 250
+          --min-per-stratum 1
+      - name: Fetch 200 revision-pinned biographies
+        run: >
+          python research/acquire/fetch_wikipedia_biographies.py
+          data/processed/smoke/cohort_250.csv.gz
+          data/processed/smoke/biographies_200.jsonl.gz
+          --id-column wikidata_code
+          --limit 200
+      - name: Install parser
+        run: pip install mwparserfromhell==0.7.2
+      - name: Extract candidates
+        run: >
+          python research/extraction/extract_timeline_candidates.py
+          data/processed/smoke/biographies_200.jsonl.gz
+          data/processed/smoke/candidates_200.csv.gz
+      - name: Show reports
+        if: always()
+        run: find data/processed/smoke -name '*.report.json' -print -exec cat {} \; || true
+      - name: Upload smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-biography-smoke
+          path: data/processed/smoke/
+          retention-days: 14
