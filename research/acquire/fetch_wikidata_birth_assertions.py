@@ -49,9 +49,10 @@ def sparql_batch(qids, retries=6):
       ?value wikibase:timeValue ?birth ;
              wikibase:timePrecision ?precision ;
              wikibase:timeCalendarModel ?calendar .
+      FILTER(?rank != wikibase:DeprecatedRank)
       OPTIONAL {{ ?person wdt:P19 ?bp . }}
     }}
-    GROUP BY ?person ?birth ?precision ?rank"""
+    GROUP BY ?person ?birth ?precision ?calendar ?rank"""
     data=urllib.parse.urlencode({"query":query,"format":"json"}).encode()
     req=urllib.request.Request(
         ENDPOINT,
