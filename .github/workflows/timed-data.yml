@@ -30,7 +30,7 @@ jobs:
           data/processed/timed/adb_wikidata_links.csv.gz
           data/processed/timed/timed_life_claims.csv.gz
           --ratings AA,A,B
-          --batch-size 50
+          --batch-size 35
 
       - name: Show reports
         if: always()
