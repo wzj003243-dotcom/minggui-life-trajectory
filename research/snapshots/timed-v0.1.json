@@ -1,0 +1,45 @@
+{
+  "snapshot_id": "minggui-timed-v0.1",
+  "created_at": "2026-10-03T10:07:07Z",
+  "source": {
+    "name": "Astro-Databank official free C sample",
+    "url": "https://www.astro.com/adbexport/c_sample.zip",
+    "source_zip_sha256": "da4a0638434dad80f1ff028e3ac898c4a9e3d2f7bb4a665d2086d5c3770844e1"
+  },
+  "feature_spec": "bazi-objective-v0.1",
+  "cohort": {
+    "input_rows": 6036,
+    "primary_ratings": ["AA","A","B"],
+    "feature_rows": 5214,
+    "unique_people": 5214,
+    "rodden_counts": {"AA":3821,"A":1161,"B":232},
+    "calendar_counts": {"gregorian":5138,"julian":76},
+    "julian_converted_to_gregorian": 76,
+    "primary_feature_eligible": 5214,
+    "source_birth_year_min": 303,
+    "source_birth_year_max": 2022
+  },
+  "artifact": {
+    "github_actions_artifact_id": 11270684889,
+    "github_actions_artifact_digest": "sha256:3feb9ecadebee6745f17771bc36d3e147b25a7d3c8f150df624f3f72d075edf9",
+    "files": {
+      "bazi_features_timed.csv.gz": {
+        "bytes": 368824,
+        "sha256": "4b9ff83543c2e4ba8f2bec5b6c3920cd8a27a95fe9a20bc4a3ee959ca19d7bba"
+      },
+      "astro_public_births.csv.gz": {
+        "bytes": 340322,
+        "sha256": "60468c6a143910b549f6021a00acd1b4beaae06be0a5ebb02e4aaaa9e4986912"
+      },
+      "bazi_features_timed.report.json": {
+        "bytes": 167,
+        "sha256": "e0c9134e454ab07ab54be291693be9cd4053fd2cc5f966d0843ec741b2e0505c"
+      }
+    }
+  },
+  "notes": [
+    "Only AA/A/B rows with safely parseable date and time are included.",
+    "Julian-calendar source dates are converted to the Gregorian date representing the same physical day before BaZi feature generation.",
+    "This snapshot contains objective calendar/BaZi features only; subjective fate interpretations are excluded."
+  ]
+}
