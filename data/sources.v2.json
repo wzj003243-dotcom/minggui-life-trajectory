@@ -1,0 +1,43 @@
+{
+  "checked_at":"2026-10-03",
+  "sources":[
+    {
+      "id":"wikidata",
+      "role":["identity","birth-assertions","structured-life-facts"],
+      "license":"CC0",
+      "scale_note":"120M+ items overall; use dumps for large cohort work rather than WDQS",
+      "production_access":"https://dumps.wikimedia.org/wikidatawiki/entities/",
+      "documentation":"https://www.wikidata.org/wiki/Wikidata:Data_access",
+      "trust_strategy":"retain statement precision, rank, reference count, and conflicting assertions"
+    },
+    {
+      "id":"pantheon-1",
+      "role":["occupation-taxonomy-benchmark","high-notability-validation"],
+      "size":11341,
+      "notes":"Manually verified demographic fields; biographies appear in >25 Wikipedia languages.",
+      "documentation":"https://www.nature.com/articles/sdata201575"
+    },
+    {
+      "id":"bhht-2022",
+      "role":["large-notable-person-cohort","cross-source-validation"],
+      "size":2290000,
+      "notes":"Cross-verified notable people, 3500BC–2018AD. Paper recommends stricter use of persons with >=2 sources because lower-notability records have higher error rates.",
+      "documentation":"https://www.nature.com/articles/s41597-022-01369-4"
+    },
+    {
+      "id":"astro-databank",
+      "role":["precise-birth-time-validation"],
+      "redistribute_raw":false,
+      "notes":"Rodden ratings provide explicit birth-data reliability. Bulk XML export is separately licensed and time-limited; keep export outside git/public data services.",
+      "documentation":"https://www.astro.com/astro-databank/Help:RR",
+      "license":"https://www.astro.com/adbexport/adb_license.htm"
+    },
+    {
+      "id":"cbdb",
+      "role":["historical-china-biography-research"],
+      "redistribute_raw":false,
+      "notes":"Current standalone-release range is CC BY-NC-SA 4.0; data beyond that range has stricter no-derivatives/no-public-access terms. Keep license/version boundary explicit.",
+      "license":"https://cbdb.hsites.harvard.edu/cbdb-data-licensing-terms"
+    }
+  ]
+}
