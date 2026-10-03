@@ -7,3 +7,5 @@ Second run: official Dataverse acquisition paths fixed.
 Third run: normalize cohorts + enrich first 25k Wikidata birth assertions.
 
 Fourth run: clean unique-person precision report and de-duplicated birthplace join.
+
+Third run: build normalized cohorts and enrich exact Wikidata birth dates.
