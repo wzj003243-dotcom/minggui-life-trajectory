@@ -60,7 +60,7 @@ SELECT ?item ?property ?eventType ?statement ?value ?rank
 }}
 '''
 
-def query(batch,retries=6):
+def query(batch,retries=3):
     body=urllib.parse.urlencode({"query":sparql(batch),"format":"json"}).encode()
     for a in range(retries):
         req=urllib.request.Request(ENDPOINT,data=body,headers={
@@ -68,16 +68,27 @@ def query(batch,retries=6):
           "Content-Type":"application/x-www-form-urlencoded"
         })
         try:
-            with urllib.request.urlopen(req,timeout=120) as r:
+            with urllib.request.urlopen(req,timeout=75) as r:
                 return json.load(r)["results"]["bindings"]
         except urllib.error.HTTPError as e:
             if e.code not in (429,500,502,503,504) or a==retries-1:raise
             retry=e.headers.get("Retry-After")
-            delay=float(retry) if retry and retry.isdigit() else min(60,2**a+random.random())
+            delay=float(retry) if retry and retry.isdigit() else min(12,2**a+random.random())
             time.sleep(delay)
         except Exception:
             if a==retries-1:raise
-            time.sleep(min(60,2**a+random.random()))
+            time.sleep(min(12,2**a+random.random()))
+
+def safe_query(batch, depth=0):
+    try:
+        return query(batch), []
+    except Exception as e:
+        if len(batch) <= 10:
+            return [], [(q, repr(e)) for q in batch]
+        mid=len(batch)//2
+        left,lf=safe_query(batch[:mid],depth+1)
+        right,rf=safe_query(batch[mid:],depth+1)
+        return left+right, lf+rf
 
 def qid(uri):return uri.rsplit("/",1)[-1]
 def rank(uri):return uri.rsplit("#",1)[-1].replace("Rank","").lower()
@@ -93,20 +104,22 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("input");ap.add_argument("output")
     ap.add_argument("--id-column",default="wikidata_id")
-    ap.add_argument("--batch-size",type=int,default=120)
+    ap.add_argument("--batch-size",type=int,default=80)
     ap.add_argument("--sleep",type=float,default=.25)
     args=ap.parse_args()
     qids=read_qids(Path(args.input),args.id_column)
     out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
     fields=["person_id","rodden_rating","property","event_type","statement_id","value_qid","rank",
             "reference_count","start_json","end_json","point_json"]
-    rows=0;people=set();failed=0
+    rows=0;people=set();failed=0;failed_examples=[]
     with gzip.open(out,"wt",encoding="utf-8",newline="") as w:
         wr=csv.DictWriter(w,fieldnames=fields);wr.writeheader()
         for bi,batch in enumerate(chunks(qids,args.batch_size),1):
-            try:bindings=query(batch)
-            except Exception as e:
-                failed+=len(batch);print(f"batch_failed={bi} people={len(batch)} error={e!r}",flush=True);continue
+            bindings, failures=safe_query(batch)
+            if failures:
+                failed+=len(failures)
+                failed_examples.extend(failures[:max(0,25-len(failed_examples))])
+                print(f"batch_partial_failure={bi} failed_people={len(failures)}",flush=True)
             grouped={}
             for b in bindings:
                 sid=b["statement"]["value"]
@@ -131,7 +144,8 @@ def main():
             if bi%10==0:print(f"batches={bi} people_done={min(bi*args.batch_size,len(qids))}/{len(qids)} claims={rows}",flush=True)
             w.flush();time.sleep(args.sleep)
     report={"input_people":len(qids),"people_with_dated_claims":len(people),"dated_claim_rows":rows,
-            "failed_people":failed,"batch_size":args.batch_size,"transport":"WDQS_VALUES"}
+            "failed_people":failed,"failed_examples":failed_examples,"batch_size":args.batch_size,
+            "transport":"WDQS_VALUES_ADAPTIVE_SPLIT"}
     out.with_name(out.name[:-7]+".report.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
     print(json.dumps(report,indent=2))
 if __name__=="__main__":main()
