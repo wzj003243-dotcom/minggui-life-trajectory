@@ -100,10 +100,11 @@ def features_from_ec(ec,include_time:bool):
 
     visible_tg=Counter()
     day_gan=ec.getDayGan()
-    for g in gans:
-        if g!=day_gan or gans.index(g)!=2:
-            god=LunarUtil.SHI_SHEN.get(day_gan+g)
-            if god:visible_tg[god]+=1
+    for i,g in enumerate(gans):
+        if i == 2:
+            continue
+        god=LunarUtil.SHI_SHEN.get(day_gan+g)
+        if god:visible_tg[god]+=1
     hidden_tg=Counter()
     for arr in hide:
         for g in arr:
