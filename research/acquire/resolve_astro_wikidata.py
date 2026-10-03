@@ -53,7 +53,8 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("input")
     ap.add_argument("output")
-    ap.add_argument("--batch-size",type=int,default=35)\n    ap.add_argument("--sleep",type=float,default=.6)
+    ap.add_argument("--batch-size",type=int,default=35)
+    ap.add_argument("--sleep",type=float,default=.6)
     args=ap.parse_args()
     grouped=defaultdict(list)
     bad=[]
