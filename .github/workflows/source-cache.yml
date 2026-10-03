@@ -1,0 +1,30 @@
+name: Seed public source cache
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/source-cache.yml"
+      - "research/acquire/fetch_public_datasets.py"
+      - "research/quality/verify_public_sources.py"
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Restore pinned public source cache
+        id: sources
+        uses: actions/cache@v4
+        with:
+          path: data/raw/acquired/
+          key: minggui-public-sources-v1-fe44aa6f
+      - name: Download pinned public sources on cache miss
+        if: steps.sources.outputs.cache-hit != 'true'
+        run: python research/acquire/fetch_public_datasets.py
+      - name: Verify pinned source checksums
+        run: python research/quality/verify_public_sources.py data/raw/acquired
