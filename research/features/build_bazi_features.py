@@ -53,6 +53,34 @@ def parse_time(raw:str):
     if not (0<=h<=23 and 0<=mi<=59 and 0<=s<=59):return None
     return h,mi,s
 
+def julian_to_gregorian(y:int,m:int,d:int):
+    """Convert a positive-year Julian-calendar civil date to the Gregorian date
+    representing the same physical day, via Julian Day Number."""
+    if y <= 0:
+        return None
+    a=(14-m)//12
+    yy=y+4800-a
+    mm=m+12*a-3
+    jdn=d+(153*mm+2)//5+365*yy+yy//4-32083
+    a=jdn+32044
+    b=(4*a+3)//146097
+    cc=a-(146097*b)//4
+    dd=(4*cc+3)//1461
+    e=cc-(1461*dd)//4
+    mm2=(5*e+2)//153
+    day=e-(153*mm2+2)//5+1
+    month=mm2+3-12*(mm2//10)
+    year=100*b+dd-4800+(mm2//10)
+    return year,month,day
+
+def calendar_kind(raw:str):
+    s=(raw or "").strip().lower()
+    if s in {"j","julian","q1985786"} or s.endswith("/q1985786"):
+        return "julian"
+    if s in {"g","gregorian","q1985727"} or s.endswith("/q1985727"):
+        return "gregorian"
+    return "unknown"
+
 def chart(y,m,d,h=12,mi=0,s=0):
     ec=Solar.fromYmdHms(y,m,d,h,mi,s).getLunar().getEightChar()
     return ec
@@ -163,13 +191,19 @@ def main():
             date=parse_date(row.get(args.date_column) or "")
             if not date:
                 skipped+=1;continue
-            y,m,d=date
+            source_y,source_m,source_d=date
             calendar=(row.get(args.calendar_column) or "").lower()
-            # Current feature engine treats post-1582 explicit Julian records as unsupported until converted.
-            explicit_julian="julian" in calendar or calendar.endswith("Q1985786".lower())
-            if explicit_julian and (y,m,d)>=(1582,10,15):
-                skipped+=1;continue
-            calendar_uncertain_historical=(not calendar and y<1900)
+            kind=calendar_kind(calendar)
+            conversion="none"
+            if kind=="julian":
+                converted=julian_to_gregorian(source_y,source_m,source_d)
+                if converted is None:
+                    skipped+=1;continue
+                y,m,d=converted
+                conversion="julian_to_gregorian"
+            else:
+                y,m,d=source_y,source_m,source_d
+            calendar_uncertain_historical=(kind=="unknown" and y<1900)
             known_time=args.mode=="timed"
             t=parse_time(row.get(args.time_column) or "") if known_time else None
             if known_time and not t:
@@ -186,12 +220,18 @@ def main():
                 ambiguous+=int(amb)
             feat=features_from_ec(ec,known_time)
             base={
-              "person_id":pid,"birth_date":f"{y:04d}-{m:02d}-{d:02d}",
+              "person_id":pid,
+              "source_birth_date":f"{source_y:04d}-{source_m:02d}-{source_d:02d}",
+              "birth_date":f"{y:04d}-{m:02d}-{d:02d}",
               "birth_time_local":row.get(args.time_column,"") if known_time else "",
-              "birth_time_known":known_time,"source_calendar":calendar,
+              "birth_time_known":known_time,
+              "source_calendar":calendar,
+              "calendar_kind":kind,
+              "calendar_conversion":conversion,
+              "calendar_uncertain_historical":calendar_uncertain_historical,
               "year_month_boundary_ambiguous":amb,
               "date_only_day_boundary_uncertainty":not known_time,
-              "primary_feature_eligible":(not amb) if not known_time else True,
+              "primary_feature_eligible":((not amb) and (not calendar_uncertain_historical)) if not known_time else (not calendar_uncertain_historical),
             }
             record={**base,**feat}
             if writer is None:
