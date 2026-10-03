@@ -5,6 +5,10 @@ on:
     paths:
       - "research/acquire/TRIGGER_TIMED_FEATURES.md"
 
+concurrency:
+  group: -github-workflows-timed-features-yml-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   timed-features:
     runs-on: ubuntu-latest
