@@ -1,0 +1,55 @@
+name: Public 82k BaZi features
+
+on:
+  push:
+    branches:
+      - "data-run-public-bazi*"
+    paths:
+      - "research/acquire/TRIGGER_PUBLIC_BAZI.md"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download frozen exact-birth cohort artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-processed-public-data
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37114891968
+          github-token: ${{ github.token }}
+          path: frozen
+
+      - name: Install BaZi dependency
+        run: pip install lunar_python==1.4.8
+
+      - name: Rebuild objective three-pillar features
+        run: >
+          python research/features/build_bazi_features.py
+          frozen/processed/public/canonical_births_100k.csv.gz
+          data/processed/public/bazi_features_82k.csv.gz
+          --mode date
+          --id-column wikidata_id
+          --date-column birth_date
+          --calendar-column calendar_model
+
+      - name: Show feature report
+        run: cat data/processed/public/bazi_features_82k.report.json
+
+      - name: Upload exact-date BaZi feature cohort
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-public-bazi-82k
+          path: |
+            data/processed/public/bazi_features_82k.csv.gz
+            data/processed/public/bazi_features_82k.report.json
+          retention-days: 30
