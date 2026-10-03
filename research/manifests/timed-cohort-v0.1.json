@@ -1,0 +1,49 @@
+{
+  "dataset_id": "minggui-timed-cohort-v0.1",
+  "status": "frozen-research-snapshot",
+  "workflow": {
+    "run_id": 37116020153,
+    "artifact_id": 11272435971,
+    "artifact_name": "minggui-timed-cohort",
+    "artifact_digest": "sha256:71f259d76443cc1119c1c439d28763c04640bfbe2433dfd5d6a8257d29a0e0a5",
+    "head_sha": "9315336e02c351695e28f79f346cce6c5fea88c4"
+  },
+  "birth_source": {
+    "id": "astro-databank-free-c-sample",
+    "source_file": "c_sample.zip",
+    "source_sha256": "da4a0638434dad80f1ff028e3ac898c4a9e3d2f7bb4a665d2086d5c3770844e1",
+    "raw_rows": 6036,
+    "primary_ratings": ["AA", "A", "B"],
+    "four_pillar_feature_rows": 5214,
+    "feature_version": "bazi-objective-v0.1"
+  },
+  "wikidata_linkage": {
+    "wikipedia_links_requested": 4576,
+    "resolved_wikidata_ids": 4538,
+    "resolution_rate": 0.9916958041958042,
+    "failed_requests": 0
+  },
+  "dated_life_claims": {
+    "eligible_linked_people_AA_A_B": 3991,
+    "people_with_dated_claims": 1772,
+    "claim_rows": 8240,
+    "batch_failures_people": 0,
+    "event_type_counts": {
+      "recognition.award": 3767,
+      "career.position": 2446,
+      "relationship.spouse": 786,
+      "education.affiliation": 400,
+      "organization.member": 394,
+      "career.employer": 340,
+      "migration.residence": 103,
+      "organization.affiliation": 4
+    },
+    "share_with_at_least_one_statement_reference": 0.6470873786407767
+  },
+  "important_limitations": [
+    "This snapshot predates the expanded P106/P54/P410/P102 property set.",
+    "Claims are structured relation records; start/end expansion into atomic events is performed downstream.",
+    "Astro-Databank raw licensed/full exports are not redistributed in this repository.",
+    "The cohort is public-figure biased and raw event frequencies are not ordinary-population base rates."
+  ]
+}
