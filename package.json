@@ -1,0 +1,26 @@
+{
+  "name": "minggui-life-trajectory-lab",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "lunar-typescript": "1.8.6",
+    "next": "16.3.8",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
