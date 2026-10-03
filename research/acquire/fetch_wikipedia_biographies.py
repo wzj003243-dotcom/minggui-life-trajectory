@@ -69,7 +69,7 @@ def revision_content(rev):
     main=slots.get("main") or {}
     return main.get("content") or rev.get("content") or rev.get("*") or ""
 
-def fetch_site(site,pairs,batch_size=5):
+def fetch_site(site,pairs,batch_size=10):
     """pairs: [(qid,title)] -> revision-pinned records"""
     api=HOST[site];out=[];failed=0
     for i in range(0,len(pairs),batch_size):
@@ -113,15 +113,24 @@ def fetch_site(site,pairs,batch_size=5):
             })
         if (i//batch_size+1)%20==0:
             print(f"{site}: fetched={min(i+batch_size,len(pairs))}/{len(pairs)} records={len(out)}",flush=True)
-        time.sleep(.5)
+        time.sleep(.25)
     return out,failed
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("cohort");ap.add_argument("output")
     ap.add_argument("--id-column",default="wikidata_id");ap.add_argument("--limit",type=int,default=2000)
+    ap.add_argument("--sitelink-map",default="")
     args=ap.parse_args()
     people=read_people(Path(args.cohort),args.id_column,args.limit);qids=[x[0] for x in people]
-    links=resolve_sitelinks(qids)
+    if args.sitelink_map:
+        allowed=set(qids);links={}
+        with gzip.open(args.sitelink_map,"rt",encoding="utf-8",newline="") as mf:
+            for row in csv.DictReader(mf):
+                q=(row.get("wikidata_id") or "").strip()
+                if q in allowed and row.get("site") and row.get("title"):
+                    links[q]=(row["site"],row["title"])
+    else:
+        links=resolve_sitelinks(qids)
     by_site=defaultdict(list)
     for q,(site,title) in links.items():by_site[site].append((q,title))
     records=[];failed=0
