@@ -18,6 +18,7 @@ import re
 import time
 import urllib.parse
 import urllib.request
+import urllib.error
 from pathlib import Path
 
 ENDPOINT="https://query.wikidata.org/sparql"
@@ -29,7 +30,7 @@ def read_candidates(path: Path, limit: int):
         for x in csv.DictReader(f):
             q=(x.get("wikidata_code") or "").strip()
             birth=(x.get("birth") or "").strip()
-            if not q.startswith("Q") or not birth:
+            if not re.fullmatch(r"Q\\d+", q) or not birth:
                 continue
             try:
                 rank=float(x.get("ranking_visib_5criteria") or 1e30)
@@ -40,6 +41,10 @@ def read_candidates(path: Path, limit: int):
     return rows[:limit] if limit>0 else rows
 
 def sparql_batch(qids, retries=6):
+    """Query one batch, recursively splitting a malformed/oversized batch instead of
+    failing an entire 100k acquisition run."""
+    if not qids:
+        return []
     values=" ".join("wd:"+q for q in qids)
     query=f"""SELECT ?person ?birth ?precision ?calendar ?rank (SAMPLE(?bp) AS ?birthplace) WHERE {{
       VALUES ?person {{ {values} }}
@@ -68,8 +73,23 @@ def sparql_batch(qids, retries=6):
         try:
             with urllib.request.urlopen(req,timeout=90) as resp:
                 return json.load(resp)["results"]["bindings"]
+        except urllib.error.HTTPError as e:
+            # WDQS occasionally rejects a particular VALUES batch with HTTP 400.
+            # Split it to isolate any problematic QID/query-size boundary.
+            if e.code == 400:
+                if len(qids) == 1:
+                    print(f"warning: skipping rejected QID {qids[0]}",file=sys.stderr,flush=True)
+                    return []
+                mid=len(qids)//2
+                return sparql_batch(qids[:mid],retries)+sparql_batch(qids[mid:],retries)
+            if e.code not in (429,500,502,503,504) or attempt==retries-1:
+                raise
+            time.sleep(min(30,2**attempt)+random.random())
         except Exception:
             if attempt==retries-1:
+                if len(qids)>1:
+                    mid=len(qids)//2
+                    return sparql_batch(qids[:mid],retries)+sparql_batch(qids[mid:],retries)
                 raise
             time.sleep(min(30,2**attempt)+random.random())
     return []
