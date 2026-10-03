@@ -13,3 +13,5 @@ Third run: build normalized cohorts and enrich exact Wikidata birth dates.
 Fourth run: throttle-safe Wikipedia/Wikidata resolution.
 
 Fifth run: balanced 100k exact-date cohort + calendar models.
+
+Sixth run: canonical births + objective three-pillar features.
