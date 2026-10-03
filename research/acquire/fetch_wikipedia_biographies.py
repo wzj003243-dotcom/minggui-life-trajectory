@@ -16,7 +16,7 @@ UA="MingGuiLifeTrajectory/0.1 (public research; github.com/wzj003243-dotcom/ming
 SITES=("enwiki","zhwiki")
 HOST={"enwiki":"https://en.wikipedia.org/w/api.php","zhwiki":"https://zh.wikipedia.org/w/api.php"}
 
-def post_json(url,params,retries=6):
+def post_json(url,params,retries=9):
     data=urllib.parse.urlencode(params).encode()
     for a in range(retries):
         req=urllib.request.Request(url,data=data,headers={"User-Agent":UA,"Content-Type":"application/x-www-form-urlencoded"})
@@ -24,7 +24,15 @@ def post_json(url,params,retries=6):
             with urllib.request.urlopen(req,timeout=120) as r:return json.load(r)
         except urllib.error.HTTPError as e:
             if e.code not in (429,500,502,503,504) or a==retries-1:raise
-            time.sleep(min(30,2**a)+random.random())
+            retry=e.headers.get("Retry-After")
+            if retry:
+                try:delay=float(retry)
+                except:delay=10
+            elif e.code==429:
+                delay=min(120,10*(2**a))+random.random()
+            else:
+                delay=min(45,2**a)+random.random()
+            time.sleep(delay)
         except Exception:
             if a==retries-1:raise
             time.sleep(min(30,2**a)+random.random())
@@ -41,8 +49,8 @@ def read_people(path,id_column,limit):
 
 def resolve_sitelinks(qids):
     result={}
-    for i in range(0,len(qids),40):
-        batch=qids[i:i+40]
+    for i in range(0,len(qids),20):
+        batch=qids[i:i+20]
         data=post_json(WD,{"action":"wbgetentities","format":"json","formatversion":"2","ids":"|".join(batch),
                            "props":"sitelinks","sitefilter":"|".join(SITES),"maxlag":"5"})
         ents=data.get("entities",{})
@@ -53,10 +61,10 @@ def resolve_sitelinks(qids):
                 if site in sl:
                     chosen=(site,sl[site].get("title"));break
             if chosen and chosen[1]:result[q]=chosen
-        time.sleep(.08)
+        time.sleep(.35)
     return result
 
-def fetch_site(site,pairs,batch_size=8):
+def fetch_site(site,pairs,batch_size=6):
     """pairs: [(qid,title)] -> records"""
     api=HOST[site];out=[]
     for i in range(0,len(pairs),batch_size):
@@ -88,7 +96,7 @@ def fetch_site(site,pairs,batch_size=8):
               "revision_timestamp":rev.get("timestamp"),"extract":extract,
               "license":"CC BY-SA","source_url":f"https://{site[:-4]}.wikipedia.org/?curid={page.get('pageid')}"
             })
-        time.sleep(.12)
+        time.sleep(.30)
     return out
 
 def main():
