@@ -11,6 +11,10 @@ concurrency:
   group: -github-workflows-fast-events-yml-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+concurrency:
+  group: wikidata-heavy
+  cancel-in-progress: false
+
 jobs:
   fast-events:
     runs-on: ubuntu-latest
