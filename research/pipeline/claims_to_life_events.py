@@ -140,34 +140,42 @@ def main():
             point=first_time(row.get("point_json"))
             start=first_time(row.get("start_json"))
             end=first_time(row.get("end_json"))
-            candidates=[("point",point),("start",start),("end",end)]
-            kind,data=next(((k,x) for k,x in candidates if x[0] or x[2]=="coarse"),(None,None))
-            if not data:continue
-            lo,hi,prec,cal,raw=data
-            if prec=="coarse":
-                coarse+=1
-                # Retain no ordered event row: it cannot safely participate in an age cutoff.
-                continue
-            if not lo or not hi:continue
-            if cal=="unknown":unknown_cal+=1
-            if cal=="julian":julian+=1
             refs=int(row.get("reference_count") or 0)
             conf=min(.96,.62+.06*min(refs,5)+(.08 if row.get("rank")=="preferred" else 0))
-            amin=age(birth,lo);amax=age(birth,hi)
-            amid=round((amin+amax)/2,4) if amin is not None and amax is not None else None
-            wr.writerow({
-              "event_id":row.get("statement_id") or f"{pid}:{n}","person_id":pid,
-              "domain":row["event_type"].split(".",1)[0],"event_type":row["event_type"],
-              "event_date_min":iso(lo),"event_date_max":iso(hi),
-              "temporal_precision":prec,"calendar_kind":cal,"source_time_raw":raw or "",
-              "age_min":amin if amin is not None else "","age_max":amax if amax is not None else "",
-              "age_mid":amid if amid is not None else "",
-              "subject_id":row.get("value_qid") or "","source_id":"wikidata",
-              "extraction_method":"structured","confidence":conf,
-              "observable_from":iso(hi),"statement_rank":row.get("rank") or "",
-              "reference_count":refs,"qualifier_kind":kind
-            })
-            n+=1;seen.add(pid)
+
+            # Preserve all dated temporal qualifiers. A relation carrying both start and end
+            # becomes two atomic timeline nodes instead of silently dropping the end.
+            candidates=[("point",point),("start",start),("end",end)]
+            emitted_for_claim=0
+            for kind,data in candidates:
+                lo,hi,prec,cal,raw=data
+                if not (lo or prec=="coarse"):
+                    continue
+                if prec=="coarse":
+                    coarse+=1
+                    continue
+                if not lo or not hi:
+                    continue
+                if cal=="unknown":unknown_cal+=1
+                if cal=="julian":julian+=1
+                amin=age(birth,lo);amax=age(birth,hi)
+                amid=round((amin+amax)/2,4) if amin is not None and amax is not None else None
+                base_type=row["event_type"]
+                event_type=base_type if kind=="point" else f"{base_type}.{kind}"
+                statement=row.get("statement_id") or f"{pid}:{n}"
+                wr.writerow({
+                  "event_id":f"{statement}:{kind}","person_id":pid,
+                  "domain":base_type.split(".",1)[0],"event_type":event_type,
+                  "event_date_min":iso(lo),"event_date_max":iso(hi),
+                  "temporal_precision":prec,"calendar_kind":cal,"source_time_raw":raw or "",
+                  "age_min":amin if amin is not None else "","age_max":amax if amax is not None else "",
+                  "age_mid":amid if amid is not None else "",
+                  "subject_id":row.get("value_qid") or "","source_id":"wikidata",
+                  "extraction_method":"structured","confidence":conf,
+                  "observable_from":iso(hi),"statement_rank":row.get("rank") or "",
+                  "reference_count":refs,"qualifier_kind":kind
+                })
+                n+=1;emitted_for_claim+=1;seen.add(pid)
     report={
       "life_event_rows":n,"people_with_events":len(seen),"birth_people_available":len(births),
       "coarse_claims_excluded_from_ordering":coarse,
