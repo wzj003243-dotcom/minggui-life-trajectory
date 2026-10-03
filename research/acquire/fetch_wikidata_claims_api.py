@@ -21,12 +21,12 @@ PROPS={
 }
 TIME_QUALIFIERS={"P580":"start","P582":"end","P585":"point"}
 
-def read_people(path:Path,ratings:set[str]):
+def read_people(path:Path,ratings:set[str],id_column:str,rating_column:str|None):
     out={}
     with gzip.open(path,"rt",encoding="utf-8",newline="") as f:
         for r in csv.DictReader(f):
-            q=(r.get("wikidata_id") or "").strip()
-            rr=(r.get("rodden_rating") or "").strip()
+            q=(r.get(id_column) or "").strip()
+            rr=(r.get(rating_column) or "").strip() if rating_column else ""
             if q.startswith("Q") and (not ratings or rr in ratings):
                 out[q]=rr
     return out
@@ -73,11 +73,14 @@ def main():
     ap.add_argument("input")
     ap.add_argument("output")
     ap.add_argument("--ratings",default="AA,A,B")
+    ap.add_argument("--id-column",default="wikidata_id")
+    ap.add_argument("--rating-column",default="rodden_rating")
     ap.add_argument("--batch-size",type=int,default=35)
     ap.add_argument("--sleep",type=float,default=.55)
     args=ap.parse_args()
     ratings={x for x in args.ratings.split(",") if x}
-    people=read_people(Path(args.input),ratings)
+    rating_column=None if args.rating_column.lower() in {"","none","null"} else args.rating_column
+    people=read_people(Path(args.input),ratings,args.id_column,rating_column)
     qids=sorted(people)
     out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
     fields=[
