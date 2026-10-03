@@ -45,7 +45,7 @@ def main():
                     "date_iso":parsed["date_iso"] if parsed else None,
                     "date_precision":p,
                     "time_local":None,
-                    "time_known":p in ("hour","minute","exact"),
+                    "time_known":False,
                     "timezone":None,
                     "timezone_confidence":None,
                     "place_id":("wd:"+person["birth_place_ids"][0]) if person.get("birth_place_ids") else None,
@@ -54,7 +54,7 @@ def main():
                     "source_reliability":f"rank={a.get('rank')};refs={a.get('reference_count',0)}",
                     "source_confidence":None,
                     "status":status,
-                    "notes":"Raw Wikidata time retained in source backbone; local birth time requires place/timezone normalization."
+                    "notes":"Wikidata time values are treated as calendar dates only; T00:00:00Z is not a birth time and Wikidata timezone is not used for this purpose. Precise time must come from a dedicated timed-birth source."
                 }
                 w.write(json.dumps(row,ensure_ascii=False)+"\n")
     print(out)
