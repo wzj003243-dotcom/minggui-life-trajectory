@@ -1,0 +1,43 @@
+name: Public 82k reality controls
+
+on:
+  push:
+    branches:
+      - "data-run-public-controls*"
+    paths:
+      - "research/acquire/TRIGGER_PUBLIC_CONTROLS.md"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download frozen exact-birth cohort artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-processed-public-data
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37114891968
+          github-token: ${{ github.token }}
+          path: frozen
+      - name: Build leakage-safe birth reality controls
+        run: >
+          python research/features/build_birth_reality_controls.py
+          frozen/processed/public/canonical_births_100k.csv.gz
+          frozen/processed/public/bhht_stratified_100k.csv.gz
+          data/processed/public/birth_reality_controls_82k.csv.gz
+      - name: Show report
+        run: cat data/processed/public/birth_reality_controls_82k.report.json
+      - name: Upload reality controls
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-public-reality-controls-82k
+          path: data/processed/public/
+          retention-days: 30
