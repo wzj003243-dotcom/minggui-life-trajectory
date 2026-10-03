@@ -10,7 +10,7 @@ from pathlib import Path
 API="https://www.wikidata.org/w/api.php"
 UA="MingGuiLifeTrajectory/0.1 (public research; github.com/wzj003243-dotcom/minggui-life-trajectory)"
 
-def get_entities(qids,props="claims",retries=6):
+def get_entities(qids,props="claims",retries=10):
     params={"action":"wbgetentities","format":"json","formatversion":"2","maxlag":"5","ids":"|".join(qids),"props":props}
     data=urllib.parse.urlencode(params).encode()
     for a in range(retries):
@@ -18,11 +18,30 @@ def get_entities(qids,props="claims",retries=6):
         try:
             with urllib.request.urlopen(req,timeout=90) as r:return json.load(r).get("entities",{})
         except urllib.error.HTTPError as e:
-            if e.code not in (429,500,502,503,504) or a==retries-1:raise
-            time.sleep(min(30,2**a)+random.random())
+            if e.code not in (429,500,502,503,504):
+                raise
+            retry=e.headers.get("Retry-After")
+            delay=float(retry) if retry and retry.isdigit() else (min(120, max(8, 2**a)) + random.random())
+            if a==retries-1:
+                if len(qids)>1:
+                    mid=len(qids)//2
+                    left=get_entities(qids[:mid],props,retries)
+                    right=get_entities(qids[mid:],props,retries)
+                    left.update(right)
+                    return left
+                print(f"warning: skipping rate-limited entity {qids[0]}",flush=True)
+                return {}
+            time.sleep(delay)
         except Exception:
-            if a==retries-1:raise
-            time.sleep(min(30,2**a)+random.random())
+            if a==retries-1:
+                if len(qids)>1:
+                    mid=len(qids)//2
+                    left=get_entities(qids[:mid],props,retries)
+                    right=get_entities(qids[mid:],props,retries)
+                    left.update(right)
+                    return left
+                return {}
+            time.sleep(min(60,max(4,2**a))+random.random())
 
 def item_values(ent,prop):
     out=[]
@@ -51,7 +70,7 @@ def read_people(path,id_column):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("people");ap.add_argument("output")
-    ap.add_argument("--id-column",default="wikidata_id");ap.add_argument("--batch-size",type=int,default=40)
+    ap.add_argument("--id-column",default="wikidata_id");ap.add_argument("--batch-size",type=int,default=25)
     args=ap.parse_args()
     people=read_people(Path(args.people),args.id_column)
     links=[];works_to_people={}
@@ -62,7 +81,7 @@ def main():
             for w in item_values(ents.get(p,{}),"P800"):
                 works_to_people.setdefault(w,set()).add(p)
         if (i//args.batch_size+1)%20==0:print(f"people={min(i+args.batch_size,len(people))}/{len(people)} works={len(works_to_people)}",flush=True)
-        time.sleep(.1)
+        time.sleep(.35)
     work_ids=sorted(works_to_people,key=lambda x:int(x[1:]))
     out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
     fields=["person_id","event_type","work_qid","publication_json"]
@@ -78,7 +97,7 @@ def main():
                     wr.writerow({"person_id":pid,"event_type":"creation.notable_work","work_qid":wid,
                                  "publication_json":json.dumps(dates,separators=(",",":"))})
                     rows+=1;with_dates+=1
-            time.sleep(.1)
+            time.sleep(.35)
     report={"input_people":len(people),"unique_notable_works":len(work_ids),"dated_creation_rows":rows}
     out.with_name(out.name[:-7]+".report.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
     print(json.dumps(report,indent=2))
