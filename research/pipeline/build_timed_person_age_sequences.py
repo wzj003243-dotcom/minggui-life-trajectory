@@ -19,6 +19,7 @@ def num(x):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("linked");ap.add_argument("events");ap.add_argument("output")
+    ap.add_argument("--as-of-year",type=int,default=2026)
     args=ap.parse_args()
     people={r["wikidata_id"]:r for r in read(Path(args.linked))}
     events=defaultdict(list);types=set()
@@ -31,7 +32,8 @@ def main():
 
     sample=next(iter(people.values())) if people else {}
     bazi_fields=[k for k in sample if k.startswith("bazi__")]
-    base=["person_id","adb_id","rodden_rating","gender","birth_country","calendar_kind","cutoff_age",
+    base=["person_id","adb_id","rodden_rating","gender","birth_country","calendar_kind",
+          "birth_year","death_year","censor_age","cutoff_age","followup_after_cutoff","event_observed",
           "past_event_total","next_observed_event_type","next_observed_event_age","next_observed_event_delay",
           "next_observed_event_confidence"]
     fields=base+[f"past_count__{t}" for t in types]+bazi_fields
@@ -42,21 +44,29 @@ def main():
         for pid,p in people.items():
             pe=sorted(events.get(pid,[]),key=lambda x:(x["age_mid"],x["age_min"]))
             if pe:with_events+=1
-            # Only create rows when there is at least one observed future event after cutoff.
-            # This avoids treating sparse Wikidata biographies as confirmed event-free lives.
+            try:birth_year=int(str(p.get("birth_date_normalized",""))[:4])
+            except:continue
+            try:death_year=int(p.get("death_year")) if p.get("death_year") else None
+            except:death_year=None
+            censor_age=(death_year-birth_year) if death_year is not None else (args.as_of_year-birth_year)
+            if censor_age<0:continue
             for cutoff in CUTS:
+                if censor_age<=cutoff:continue
                 past=[e for e in pe if e["age_max"]<=cutoff]
-                future=[e for e in pe if e["age_min"]>cutoff]
-                if not future:continue
-                nxt=future[0];counts=Counter(e["event_type"] for e in past)
+                future=[e for e in pe if e["age_min"]>cutoff and e["age_min"]<=censor_age]
+                nxt=future[0] if future else None
+                counts=Counter(e["event_type"] for e in past)
                 row={
                   "person_id":pid,"adb_id":p.get("adb_id"),"rodden_rating":p.get("rodden_rating"),
                   "gender":p.get("gender"),"birth_country":p.get("birth_country"),
-                  "calendar_kind":p.get("calendar_kind"),"cutoff_age":cutoff,
-                  "past_event_total":len(past),"next_observed_event_type":nxt["event_type"],
-                  "next_observed_event_age":round(nxt["age_mid"],3),
-                  "next_observed_event_delay":round(nxt["age_mid"]-cutoff,3),
-                  "next_observed_event_confidence":nxt["confidence"]
+                  "calendar_kind":p.get("calendar_kind"),"birth_year":birth_year,
+                  "death_year":death_year if death_year is not None else "",
+                  "censor_age":censor_age,"cutoff_age":cutoff,
+                  "followup_after_cutoff":round(censor_age-cutoff,3),"event_observed":bool(nxt),
+                  "past_event_total":len(past),"next_observed_event_type":nxt["event_type"] if nxt else "",
+                  "next_observed_event_age":round(nxt["age_mid"],3) if nxt else "",
+                  "next_observed_event_delay":round(nxt["age_mid"]-cutoff,3) if nxt else "",
+                  "next_observed_event_confidence":nxt["confidence"] if nxt else ""
                 }
                 for t in types:row[f"past_count__{t}"]=counts[t]
                 for k in bazi_fields:row[k]=p.get(k,"")
@@ -64,7 +74,8 @@ def main():
     report={
       "linked_people":len(people),"people_with_any_dated_event":with_events,"person_age_rows":rows,
       "cutoffs":list(CUTS),"event_types":types,
-      "label_semantics":"next observed dated event; no-event rows intentionally excluded until censoring is modeled"
+      "label_semantics":"next observed dated event with death/current-date censoring",
+      "warning":"event_observed=false means no structured event was observed before censoring; apply timeline-coverage filters before interpreting it as evidence of no event"
     }
     out.with_name(out.name[:-7]+".report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
     print(json.dumps(report,ensure_ascii=False,indent=2))
