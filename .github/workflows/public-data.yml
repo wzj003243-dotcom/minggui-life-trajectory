@@ -1,7 +1,9 @@
 name: Public biography data
 
 on:
-  pull_request:
+  push:
+    branches:
+      - "data-run-public"
     paths:
       - "research/acquire/TRIGGER.md"
 
