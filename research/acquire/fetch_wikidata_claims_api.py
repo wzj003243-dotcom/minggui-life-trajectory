@@ -73,7 +73,8 @@ def main():
     ap.add_argument("input")
     ap.add_argument("output")
     ap.add_argument("--ratings",default="AA,A,B")
-    ap.add_argument("--batch-size",type=int,default=35)\n    ap.add_argument("--sleep",type=float,default=.55)
+    ap.add_argument("--batch-size",type=int,default=35)
+    ap.add_argument("--sleep",type=float,default=.55)
     args=ap.parse_args()
     ratings={x for x in args.ratings.split(",") if x}
     people=read_people(Path(args.input),ratings)
