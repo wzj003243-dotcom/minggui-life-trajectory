@@ -8,7 +8,7 @@ on:
 jobs:
   public-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,14 +18,17 @@ jobs:
         run: python research/acquire/fetch_public_datasets.py
       - name: Normalize public cohorts
         run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/public
-      - name: Fetch precision-aware Wikidata births for first 25k cohort
-        run: python research/acquire/fetch_wikidata_birth_assertions.py data/processed/public/bhht_core.csv.gz data/processed/public/wikidata_birth_assertions_25k.csv.gz --limit 25000 --batch-size 150
+      - name: Select balanced 100k exact-date cohort
+        run: python research/cohorts/select_stratified_bhht.py data/processed/public/bhht_core.csv.gz data/processed/public/bhht_stratified_100k.csv.gz --target 100000
+      - name: Fetch precision-aware Wikidata births for balanced 100k cohort
+        run: python research/acquire/fetch_wikidata_birth_assertions.py data/processed/public/bhht_stratified_100k.csv.gz data/processed/public/wikidata_birth_assertions_100k.csv.gz --limit 0 --batch-size 150
       - name: Show reports
         if: always()
         run: |
           cat data/raw/acquired/acquisition_report.json || true
           cat data/processed/public/public_cohort_profile.json || true
-          cat data/processed/public/wikidata_birth_assertions_25k.report.json || true
+          cat data/processed/public/bhht_stratified_100k.report.json || true
+          cat data/processed/public/wikidata_birth_assertions_100k.report.json || true
       - name: Upload processed public cohort
         if: always()
         uses: actions/upload-artifact@v4
