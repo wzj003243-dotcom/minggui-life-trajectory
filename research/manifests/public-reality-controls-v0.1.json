@@ -1,0 +1,43 @@
+{
+  "dataset_id": "minggui-public-reality-controls-v0.1",
+  "status": "frozen-feature-matrix",
+  "parent_dataset": "minggui-public-exact-birth-cohort-v0.1",
+  "workflow": {
+    "run_id": 37118795571,
+    "artifact_id": 11272352784,
+    "artifact_name": "minggui-public-reality-controls-82k",
+    "artifact_digest": "sha256:cdf768fbd8903373cdb6593ed022e9d4693ac5c82aabac4de654f0cf3f559fc3",
+    "head_sha": "caa03f4a687eb3aa35d3548a459fdc8cda9275ad"
+  },
+  "rows": 82056,
+  "missing_bhht_metadata": 0,
+  "columns": [
+    "birth_date",
+    "birth_year",
+    "birth_month",
+    "birth_day",
+    "day_of_year",
+    "day_of_year_sin",
+    "day_of_year_cos",
+    "month_sin",
+    "month_cos",
+    "calendar_model",
+    "gender",
+    "birth_latitude",
+    "birth_longitude",
+    "birth_region",
+    "birth_subregion",
+    "sampling_weight"
+  ],
+  "leakage_policy": {
+    "allowed": "birth-observable non-metaphysical controls only",
+    "excluded": [
+      "final occupation",
+      "awards",
+      "Wikipedia edition count",
+      "visibility rank",
+      "later-life events"
+    ]
+  },
+  "purpose": "same-person reality/calendar baseline for measuring incremental BaZi signal"
+}
