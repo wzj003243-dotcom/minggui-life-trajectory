@@ -79,6 +79,15 @@ jobs:
           --date-column birth_date
           --calendar-column calendar_model
 
+      - name: Build censor-aware person-age sequence table
+        run: >
+          python research/pipeline/build_person_age_sequences.py
+          data/processed/fast/bhht_stratified_10k.csv.gz
+          data/processed/fast/event_cohort_8k.csv.gz
+          data/processed/fast/bazi_features_10k.csv.gz
+          data/processed/fast/public_life_events_8k.csv.gz
+          data/processed/fast/person_age_sequences.csv.gz
+
       - name: Show reports
         if: always()
         run: |
