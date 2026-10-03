@@ -2,13 +2,27 @@
 
 import { useMemo, useState } from "react";
 import { calculateBazi } from "../lib/bazi";
-import { calibrate, heuristicBranches, stageNarrative, traitLabels, traditionalPrior, type CalibrationAnswers, type TraitKey } from "../lib/model";
+import {
+  calibrate,
+  calibratePastEvents,
+  heuristicBranches,
+  pastEventLabels,
+  stageNarrative,
+  traitLabels,
+  traditionalPrior,
+  type CalibrationAnswers,
+  type PastEvent,
+  type PastEventType,
+  type TraitKey,
+} from "../lib/model";
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
+const emptyEvent = (i: number): PastEvent => ({ id: `event-${i}`, age: 18, type: "migration", note: "" });
 
 export default function Analyzer() {
   const [birth, setBirth] = useState({ date: "2004-02-03", time: "12:00", knownTime: false, place: "贵阳", gender: "male" });
   const [answers, setAnswers] = useState<CalibrationAnswers>({ underPressure:"research", projectMode:"system", biggestFear:"direction", consistency:3, mobility:4 });
+  const [events, setEvents] = useState<PastEvent[]>([]);
   const [submitted, setSubmitted] = useState(false);
 
   const result = useMemo(() => {
@@ -17,10 +31,15 @@ export default function Analyzer() {
     if (!y || !m || !d) return null;
     const chart = calculateBazi({ year:y, month:m, day:d, hour:hh, minute:mm, knownTime:birth.knownTime });
     const prior = traditionalPrior(chart);
-    const posterior = calibrate(prior, answers);
+    const questionnaire = calibrate(prior, answers);
+    const posterior = calibratePastEvents(questionnaire, events);
     const branches = heuristicBranches(posterior);
-    return { chart, prior, posterior, branches };
-  }, [birth, answers]);
+    return { chart, prior, questionnaire, posterior, branches };
+  }, [birth, answers, events]);
+
+  const addEvent = () => setEvents(prev => [...prev, emptyEvent(Date.now())]);
+  const updateEvent = (id: string, patch: Partial<PastEvent>) => setEvents(prev => prev.map(e => e.id === id ? {...e, ...patch} : e));
+  const removeEvent = (id: string) => setEvents(prev => prev.filter(e => e.id !== id));
 
   return (
     <div className="analyzer-grid">
@@ -32,18 +51,33 @@ export default function Analyzer() {
         <label>出生地点<input value={birth.place} onChange={e=>setBirth({...birth,place:e.target.value})} placeholder="城市即可"/></label>
 
         <hr/>
-        <h3>高信息量校准</h3>
+        <h3>已然事件校准</h3>
+        <p className="fine">这里只用于校准，不记作“算准了”。真正预测只能发生在信息截止日期之后。</p>
+        <div className="event-editor">
+          {events.map(ev => <div className="event-row" key={ev.id}>
+            <input className="age-input" type="number" min="0" max="100" value={ev.age} onChange={e=>updateEvent(ev.id,{age:Number(e.target.value)})}/>
+            <select value={ev.type} onChange={e=>updateEvent(ev.id,{type:e.target.value as PastEventType})}>
+              {(Object.keys(pastEventLabels) as PastEventType[]).map(k=><option value={k} key={k}>{pastEventLabels[k]}</option>)}
+            </select>
+            <input value={ev.note} onChange={e=>updateEvent(ev.id,{note:e.target.value})} placeholder="一句话描述，可留空"/>
+            <button className="mini-button" type="button" onClick={()=>removeEvent(ev.id)}>×</button>
+          </div>)}
+          <button className="button ghost wide" type="button" onClick={addEvent}>+ 添加一个已发生事件</button>
+        </div>
+
+        <hr/>
+        <h3>高信息量问答</h3>
         <label>压力大时你更常做什么？<select value={answers.underPressure} onChange={e=>setAnswers({...answers,underPressure:e.target.value as CalibrationAnswers["underPressure"]})}><option value="research">疯狂查资料 / 想更多</option><option value="act">先行动再说</option><option value="avoid">逃避 / 延后</option><option value="ask">找人讨论 / 借外力</option></select></label>
         <label>做项目更像哪种？<select value={answers.projectMode} onChange={e=>setAnswers({...answers,projectMode:e.target.value as CalibrationAnswers["projectMode"]})}><option value="system">先想完整系统</option><option value="prototype">先做最小可用版本</option><option value="switch">容易开很多坑 / 换方向</option><option value="steady">慢但稳定推进</option></select></label>
         <label>你最怕哪类失败？<select value={answers.biggestFear} onChange={e=>setAnswers({...answers,biggestFear:e.target.value as CalibrationAnswers["biggestFear"]})}><option value="direction">没有方向</option><option value="money">经济不安全</option><option value="status">被否定 / 没有地位</option><option value="relationship">重要关系失控</option><option value="wasted">努力很久却没有结果</option></select></label>
         <label>长期坚持能力：{answers.consistency}/5<input type="range" min="1" max="5" value={answers.consistency} onChange={e=>setAnswers({...answers,consistency:Number(e.target.value)})}/></label>
         <label>你对迁移/换环境的接受度：{answers.mobility}/5<input type="range" min="1" max="5" value={answers.mobility} onChange={e=>setAnswers({...answers,mobility:Number(e.target.value)})}/></label>
         <button className="button primary wide" onClick={()=>setSubmitted(true)}>展开命轨</button>
-        <p className="fine">当前公开预览仅运行“传统先验 + 个人校准”。历史人物训练层尚未接入时不会伪造案例概率。</p>
+        <p className="fine">当前公开预览仅运行“传统先验 + 已然事件 + 个人问答”。历史人物训练层尚未接入时不会伪造案例概率。</p>
       </section>
 
       <section className="panel report-panel">
-        {!submitted || !result ? <div className="empty"><span className="seal big">轨</span><h2>等待展开</h2><p>我们会先展示命理先验，然后让你看到校准到底改了什么。</p></div> : <>
+        {!submitted || !result ? <div className="empty"><span className="seal big">轨</span><h2>等待展开</h2><p>我们会先展示命理先验，然后让你看到过去经历到底把判断改了多少。</p></div> : <>
           <div className="report-head"><div><div className="eyebrow">命轨书 / RESEARCH PREVIEW</div><h2>{birth.date} · {birth.place}</h2></div><span className="status">未接历史模型</span></div>
 
           <div className="pillars">
@@ -51,11 +85,13 @@ export default function Analyzer() {
           </div>
           <p className="muted">日主 {result.chart.dayMaster} · 出生时间{result.chart.knownTime?"已知":"未知，因此时柱与起运相关判断不进入结果"}</p>
 
-          <h3>一、传统先验 → 个人校准</h3>
+          <h3>一、传统先验 → 已然校准 → 个体画像</h3>
           <div className="traits">
-            {(Object.keys(result.prior) as TraitKey[]).map(k=><div className="trait" key={k}><div className="trait-name"><b>{traitLabels[k].zh}</b><small>{traitLabels[k].desc}</small></div><div className="bars"><span style={{width:pct(result.prior[k])}} className="bar prior"></span><span style={{width:pct(result.posterior[k])}} className="bar posterior"></span></div><div className="score"><span>{pct(result.prior[k])}</span><b>→ {pct(result.posterior[k])}</b></div></div>)}
+            {(Object.keys(result.prior) as TraitKey[]).map(k=><div className="trait" key={k}><div className="trait-name"><b>{traitLabels[k].zh}</b><small>{traitLabels[k].desc}</small></div><div className="bars"><span style={{width:pct(result.prior[k])}} className="bar prior"></span><span style={{width:pct(result.questionnaire[k])}} className="bar questionnaire"></span><span style={{width:pct(result.posterior[k])}} className="bar posterior"></span></div><div className="score"><span>{pct(result.prior[k])}</span><b>→ {pct(result.posterior[k])}</b></div></div>)}
           </div>
-          <div className="legend"><span><i className="dot prior-dot"/>命理先验</span><span><i className="dot post-dot"/>个人校准后</span></div>
+          <div className="legend"><span><i className="dot prior-dot"/>命理先验</span><span><i className="dot question-dot"/>问答校准</span><span><i className="dot post-dot"/>加入已然事件</span></div>
+
+          {events.length > 0 && <div className="past-events"><h4>你提供的已然事件</h4>{events.slice().sort((a,b)=>a.age-b.age).map(e=><div key={e.id}><b>{e.age} 岁</b><span>{pastEventLabels[e.type]}</span><small>{e.note || "未写描述"}</small></div>)}</div>}
 
           <h3>二、当前最可能的人生结构</h3>
           <div className="branches">
@@ -68,8 +104,8 @@ export default function Analyzer() {
             {[10,20,30,40,50,60,70].map((a,i)=><div key={a}><span>{i===0?"0–20":`${a}–${a+10}`}</span><p>{stageNarrative(i===0?18:a+5,result.posterior)}</p></div>)}
           </div>
 
-          <h3>四、证据构成</h3>
-          <div className="evidence"><div><b>35%</b><span>传统命理先验</span></div><div><b>65%</b><span>个人校准问答</span></div><div className="disabled"><b>—</b><span>历史人物数据库（待训练）</span></div></div>
+          <h3>四、当前输入构成</h3>
+          <div className="evidence"><div><b>先验</b><span>传统命理结构</span></div><div><b>{events.length}</b><span>已然事件（只校准）</span></div><div><b>5</b><span>高信息量问答</span></div><div className="disabled"><b>—</b><span>历史人物数据库（待训练）</span></div></div>
         </>}
       </section>
     </div>
