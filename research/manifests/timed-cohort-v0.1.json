@@ -1,6 +1,6 @@
 {
   "dataset_id": "minggui-timed-cohort-v0.1",
-  "status": "frozen-research-snapshot",
+  "status": "raw-linkage-snapshot-not-training-final",
   "workflow": {
     "run_id": 37116020153,
     "artifact_id": 11272435971,
@@ -13,7 +13,11 @@
     "source_file": "c_sample.zip",
     "source_sha256": "da4a0638434dad80f1ff028e3ac898c4a9e3d2f7bb4a665d2086d5c3770844e1",
     "raw_rows": 6036,
-    "primary_ratings": ["AA", "A", "B"],
+    "primary_ratings": [
+      "AA",
+      "A",
+      "B"
+    ],
     "four_pillar_feature_rows": 5214,
     "feature_version": "bazi-objective-v0.1"
   },
@@ -41,6 +45,7 @@
     "share_with_at_least_one_statement_reference": 0.6470873786407767
   },
   "important_limitations": [
+    "ADB-to-Wikidata links in v0.1 were URL-resolved but not yet birth-date identity-validated; do not use this manifest as the final training cohort.",
     "This snapshot predates the expanded P106/P54/P410/P102 property set.",
     "Claims are structured relation records; start/end expansion into atomic events is performed downstream.",
     "Astro-Databank raw licensed/full exports are not redistributed in this repository.",
