@@ -89,10 +89,18 @@ def browse(resource,artist_id):
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("cohort");ap.add_argument("output_dir")
     ap.add_argument("--id-column",default="wikidata_id");ap.add_argument("--limit",type=int,default=3000)
+    ap.add_argument("--mbid-map",default="")
     args=ap.parse_args()
     outdir=Path(args.output_dir);outdir.mkdir(parents=True,exist_ok=True)
     qids=read_qids(Path(args.cohort),args.id_column,args.limit)
-    q_to_mb=wikidata_musicbrainz(qids)
+    if args.mbid_map:
+        q_to_mb=defaultdict(set)
+        with gzip.open(args.mbid_map,"rt",encoding="utf-8",newline="") as mf:
+            for row in csv.DictReader(mf):
+                q=(row.get("wikidata_id") or "").strip();mb=(row.get("external_id") or "").strip()
+                if q in set(qids) and len(mb)==36:q_to_mb[q].add(mb)
+    else:
+        q_to_mb=wikidata_musicbrainz(qids)
     primary={q:next(iter(v)) for q,v in q_to_mb.items() if len(v)==1}
     ambiguous={q:sorted(v) for q,v in q_to_mb.items() if len(v)>1}
 
