@@ -1,0 +1,22 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://minggui.dev/schema/source-record.v1.json",
+  "title":"MingGuiSourceRecord",
+  "type":"object",
+  "required":["source_id","source_type","retrieved_at","license_bucket"],
+  "properties":{
+    "source_id":{"type":"string"},
+    "source_type":{"enum":["dataset","webpage","book","archive","user-report","official-record","other"]},
+    "publisher":{"type":["string","null"]},
+    "title":{"type":["string","null"]},
+    "url":{"type":["string","null"]},
+    "dataset_version":{"type":["string","null"]},
+    "retrieved_at":{"type":"string"},
+    "license_bucket":{"enum":["public-domain","open-attribution","open-noncommercial","licensed-private","restricted","user-private","unknown"]},
+    "license_url":{"type":["string","null"]},
+    "content_hash":{"type":["string","null"]},
+    "independence_group":{"type":["string","null"],"description":"Sources sharing the same upstream origin should share a group so they do not count as independent corroboration."},
+    "notes":{"type":["string","null"]}
+  },
+  "additionalProperties":false
+}
