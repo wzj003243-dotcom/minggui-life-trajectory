@@ -22,8 +22,19 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Restore pinned public source cache
+        id: sources
+        uses: actions/cache@v4
+        with:
+          path: data/raw/acquired/
+          key: minggui-public-sources-v1-fe44aa6f
+
       - name: Acquire verified public datasets
+        if: steps.sources.outputs.cache-hit != 'true'
         run: python research/acquire/fetch_public_datasets.py
+
+      - name: Verify pinned source checksums
+        run: python research/quality/verify_public_sources.py data/raw/acquired
 
       - name: Normalize BHHT backbone
         run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/fast
