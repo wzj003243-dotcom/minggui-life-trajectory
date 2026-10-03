@@ -1,0 +1,62 @@
+{
+  "dataset_id": "minggui-public-exact-birth-cohort-v0.1",
+  "status": "frozen-birth-cohort-snapshot",
+  "workflow": {
+    "run_id": 37114891968,
+    "artifact_id": 11271309423,
+    "artifact_name": "minggui-processed-public-data",
+    "artifact_digest": "sha256:f3fd8f2332ce2ce1c165d424ac2c4e00329e29ef525eca52ebdecac7e109157a",
+    "head_sha": "d1171aae2e6ce604e8d6392d28dad00e96169c6d"
+  },
+  "sources": {
+    "bhht": {
+      "rows": 2291817,
+      "source_sha256": "fe44aa6f97cf9f6c12d040137f92a9f4d0fd1f50e28f7f5d80eeae29b487828d"
+    },
+    "pantheon": {
+      "rows": 11341,
+      "md5": "c5ba6e1e5e5352f5469801f883e1559a",
+      "source_sha256": "b5c7eb6830e66e796fe91b30a543041e24de7aeb794337dcd03eac786116284a"
+    },
+    "wikidata": {
+      "role": "P569 precision-aware enrichment"
+    }
+  },
+  "stratified_sample": {
+    "requested": 100000,
+    "selected": 100000,
+    "eligible_population": 1905682,
+    "strata": 908,
+    "year_scope": [
+      1800,
+      2005
+    ],
+    "dimensions": [
+      "un_region",
+      "level1_main_occ",
+      "birth_era",
+      "wikipedia_edition_tier"
+    ]
+  },
+  "birth_assertions": {
+    "people_found": 98979,
+    "people_day_precision": 84255,
+    "people_day_precision_bhht_year_match": 83018,
+    "people_multiple_assertions": 6207,
+    "people_conflicting_values": 6095
+  },
+  "canonicalization": {
+    "canonical_unique": 78492,
+    "canonical_preferred": 3564,
+    "primary_canonical": 82056,
+    "conflicting_day_values": 962,
+    "year_only": 13874,
+    "month_only": 695,
+    "no_eligible_birth": 1392
+  },
+  "exclusions": [
+    "The bazi_features_100k file in this artifact is incomplete because the feature writer hit a sparse relation-schema bug later fixed in main.",
+    "Use canonical_births_100k as the frozen birth cohort; regenerate BaZi features with current build_bazi_features.py.",
+    "This is a notable/public-biography cohort, not an ordinary-population base-rate sample."
+  ]
+}
