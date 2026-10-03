@@ -45,10 +45,15 @@ def main():
     for e in read_csv(Path(args.life_events)):
         pid=e["person_id"]
         if pid not in event_ids:continue
-        ages=[fnum(e.get("age_point")),fnum(e.get("age_start")),fnum(e.get("age_end"))]
-        age=next((x for x in ages if x is not None),None)
-        if age is None or age < 0:continue
-        x={"age":age,"event_type":e["event_type"],"confidence":fnum(e.get("confidence")) or 0}
+        amin=fnum(e.get("age_min"));amax=fnum(e.get("age_max"));amid=fnum(e.get("age_mid"))
+        # Backward compatibility with older normalized event files.
+        if amin is None and amax is None and amid is None:
+            legacy=[fnum(e.get("age_point")),fnum(e.get("age_start")),fnum(e.get("age_end"))]
+            amid=next((x for x in legacy if x is not None),None)
+            amin=amax=amid
+        if amin is None or amax is None or amid is None or amax < 0:continue
+        x={"age_min":amin,"age_max":amax,"age_mid":amid,"event_type":e["event_type"],
+           "confidence":fnum(e.get("confidence")) or 0}
         events[pid].append(x);event_types.add(e["event_type"])
     event_types=sorted(event_types)
 
@@ -76,12 +81,16 @@ def main():
             if by is None:continue
             censor=(dy-by) if dy is not None else (args.as_of_year-by)
             if censor < 0:continue
-            pe=sorted(events.get(pid,[]),key=lambda x:x["age"])
+            pe=sorted(events.get(pid,[]),key=lambda x:(x["age_mid"],x["age_min"]))
             people+=1
             for cutoff in CUTS:
                 if censor <= cutoff:continue
-                past=[e for e in pe if e["age"]<=cutoff]
-                future=[e for e in pe if e["age"]>cutoff]
+                # Conservative cutoff semantics:
+                # past only if the latest possible event age is <= cutoff;
+                # future only if the earliest possible event age is > cutoff.
+                # An interval straddling cutoff is excluded from both sides.
+                past=[e for e in pe if e["age_max"]<=cutoff]
+                future=[e for e in pe if e["age_min"]>cutoff]
                 nxt=future[0] if future else None
                 counts=Counter(e["event_type"] for e in past)
                 row={
@@ -95,8 +104,8 @@ def main():
                   "sampling_weight":meta.get("sampling_weight"),
                   "past_event_total":len(past),
                   "next_observed_event_type":nxt["event_type"] if nxt else "",
-                  "next_observed_event_age":round(nxt["age"],3) if nxt else "",
-                  "next_observed_event_delay":round(nxt["age"]-cutoff,3) if nxt else "",
+                  "next_observed_event_age":round(nxt["age_mid"],3) if nxt else "",
+                  "next_observed_event_delay":round(nxt["age_mid"]-cutoff,3) if nxt else "",
                   "next_observed_event_confidence":nxt["confidence"] if nxt else ""
                 }
                 for et in event_types:row[f"past_count__{et}"]=counts[et]
