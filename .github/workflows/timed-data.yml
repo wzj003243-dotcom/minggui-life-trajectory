@@ -18,8 +18,7 @@ jobs:
         run: python research/acquire/fetch_astro_sample.py
       - name: Resolve Wikipedia pages to Wikidata
         run: python research/acquire/resolve_astro_wikidata.py data/processed/timed/astro_public_births.csv.gz data/processed/timed/adb_wikidata_links.csv.gz
-      - name: Fetch dated Wikidata life statements for AA/A/B
-        run: python research/acquire/fetch_wikidata_life_statements.py data/processed/timed/adb_wikidata_links.csv.gz data/processed/timed/timed_life_statements.csv.gz --ratings AA,A,B --batch-size 75
+      - name: Fetch dated Wikidata life claims for AA/A/B\n        run: python research/acquire/fetch_wikidata_claims_api.py data/processed/timed/adb_wikidata_links.csv.gz data/processed/timed/timed_life_claims.csv.gz --ratings AA,A,B --batch-size 50
       - name: Show reports
         if: always()
         run: |
