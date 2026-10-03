@@ -1,0 +1,16 @@
+{
+  "version":"1.0.0",
+  "targets":[
+    {"name":"migration_cross_country","event_types":["migration.cross_country"],"horizons_years":[5,10],"kind":"binary"},
+    {"name":"career_domain_change","event_types":["career.domain_change"],"horizons_years":[5,10],"kind":"binary"},
+    {"name":"first_major_creation","event_types":["creation.first_major_work","creation.publication","creation.product_launch","creation.research_breakthrough"],"horizons_years":[5,10],"kind":"binary"},
+    {"name":"public_recognition","event_types":["recognition.award","recognition.public_breakthrough","recognition.appointment","recognition.election"],"horizons_years":[5,10],"kind":"binary"},
+    {"name":"organization_building","event_types":["organization.found","organization.lead"],"horizons_years":[5,10],"kind":"binary"},
+    {"name":"entrepreneurship","event_types":["finance.business_founded","creation.product_launch"],"horizons_years":[5,10],"kind":"binary"},
+    {"name":"long_term_partnership_transition","event_types":["relationship.long_term_start","relationship.marriage","relationship.separation","relationship.divorce"],"horizons_years":[5,10],"kind":"binary"}
+  ],
+  "excluded_user_facing_targets":[
+    "mortality","medical_diagnosis","crime_propensity","fertility","financial_ruin"
+  ],
+  "principle":"Targets are observable event classes, not moral or mystical labels. The same target definition is applied to every person."
+}
