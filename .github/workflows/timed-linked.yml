@@ -45,11 +45,19 @@ jobs:
           data/processed/timed/astro_public_births.csv.gz
           data/processed/timed/adb_wikidata_links.csv.gz
 
+      - name: Validate Astro-Wikidata identity by birth date
+        run: >
+          python research/quality/validate_adb_wikidata_identity.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_links.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          data/processed/timed/adb_wikidata_identity_validation.csv.gz
+
       - name: Build canonical timed linked cohort
         run: >
           python research/pipeline/build_timed_linked_cohort.py
           data/processed/timed/astro_public_births.csv.gz
-          data/processed/timed/adb_wikidata_links.csv.gz
+          data/processed/timed/adb_wikidata_identity_validation.csv.gz
           data/processed/timed/bazi_features_timed.csv.gz
           data/processed/timed/timed_linked_cohort.csv.gz
 
