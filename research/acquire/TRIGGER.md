@@ -11,3 +11,5 @@ Fourth run: clean unique-person precision report and de-duplicated birthplace jo
 Third run: build normalized cohorts and enrich exact Wikidata birth dates.
 
 Fourth run: throttle-safe Wikipedia/Wikidata resolution.
+
+Fifth run: balanced 100k exact-date cohort + calendar models.
