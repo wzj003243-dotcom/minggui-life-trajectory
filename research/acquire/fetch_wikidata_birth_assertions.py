@@ -47,7 +47,8 @@ def sparql_batch(qids, retries=6):
       ?statement psv:P569 ?value ;
                  wikibase:rank ?rank .
       ?value wikibase:timeValue ?birth ;
-             wikibase:timePrecision ?precision .
+             wikibase:timePrecision ?precision ;
+             wikibase:timeCalendarModel ?calendar .
       OPTIONAL {{ ?person wdt:P19 ?bp . }}
     }}
     GROUP BY ?person ?birth ?precision ?rank"""
@@ -104,7 +105,7 @@ def main():
     out.parent.mkdir(parents=True,exist_ok=True)
 
     fields=[
-        "wikidata_id","birth_time_value","time_precision","statement_rank",
+        "wikidata_id","birth_time_value","time_precision","calendar_model","statement_rank",
         "birthplace_qid","bhht_birth_year","birth_year_match"
     ]
     found=set()
@@ -150,6 +151,7 @@ def main():
                     "wikidata_id":q,
                     "birth_time_value":birth,
                     "time_precision":precision,
+                    "calendar_model":b.get("calendar",{}).get("value"),
                     "statement_rank":b.get("rank",{}).get("value"),
                     "birthplace_qid":entity_id(b,"birthplace"),
                     "bhht_birth_year":expected,
