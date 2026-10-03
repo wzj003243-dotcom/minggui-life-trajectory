@@ -38,7 +38,7 @@ def main():
       "birth_date_normalized","birth_date_source","birth_time_local",
       "birth_place","birth_country","birth_latitude","birth_longitude",
       "wikipedia_url","adb_url","source_calendar","calendar_kind",
-      "calendar_conversion","feature_version"
+      "calendar_conversion","feature_version","death_date_normalized","death_year"
     ]
     out_fields=base_fields+[f"bazi__{x}" for x in feature_fields if x not in {
       "source_birth_date","birth_date","birth_time_local","source_calendar","calendar_kind",
@@ -62,6 +62,10 @@ def main():
             seen_q.add(q)
             rr=b["rodden_rating"];by_rating[rr]=by_rating.get(rr,0)+1
             cal=f.get("calendar_kind","");by_calendar[cal]=by_calendar.get(cal,0)+1
+            death_exact=[x for x in (ln.get("wikidata_death_exact_dates") or "").split("|") if x]
+            death_years=[x for x in (ln.get("wikidata_death_years") or "").split("|") if x]
+            death_date=death_exact[0] if len(set(death_exact))==1 else ""
+            death_year=death_years[0] if len(set(death_years))==1 else ""
             row={
               "wikidata_id":q,"adb_id":adb_id,"name":b.get("name",""),"gender":b.get("gender",""),
               "rodden_rating":rr,"birth_date_normalized":f.get("birth_date",""),
@@ -70,7 +74,8 @@ def main():
               "birth_latitude":b.get("latitude",""),"birth_longitude":b.get("longitude",""),
               "wikipedia_url":b.get("wikipedia_url",""),"adb_url":b.get("adb_url",""),
               "source_calendar":f.get("source_calendar",""),"calendar_kind":cal,
-              "calendar_conversion":f.get("calendar_conversion",""),"feature_version":f.get("feature_version","")
+              "calendar_conversion":f.get("calendar_conversion",""),"feature_version":f.get("feature_version",""),
+              "death_date_normalized":death_date,"death_year":death_year
             }
             for k in feature_fields:
                 if k in {"source_birth_date","birth_date","birth_time_local","source_calendar","calendar_kind","calendar_conversion","feature_version"}:continue
