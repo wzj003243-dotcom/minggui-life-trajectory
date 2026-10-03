@@ -1,7 +1,9 @@
 name: Fast public event cohort
 
 on:
-  pull_request:
+  push:
+    branches:
+      - "data-run-fast-events"
     paths:
       - "research/acquire/TRIGGER_FAST_EVENTS.md"
 
