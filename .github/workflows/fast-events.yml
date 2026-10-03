@@ -5,6 +5,10 @@ on:
     paths:
       - "research/acquire/TRIGGER_FAST_EVENTS.md"
 
+concurrency:
+  group: -github-workflows-fast-events-yml-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   fast-events:
     runs-on: ubuntu-latest
