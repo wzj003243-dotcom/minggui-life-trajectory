@@ -8,8 +8,8 @@ on:
       - "research/acquire/TRIGGER_BIOGRAPHY.md"
 
 concurrency:
-  group: biography-text-${{ github.ref }}
-  cancel-in-progress: true
+  group: wikidata-heavy
+  cancel-in-progress: false
 
 jobs:
   biography-text:
