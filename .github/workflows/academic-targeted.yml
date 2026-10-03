@@ -1,0 +1,73 @@
+name: Targeted academic enrichment
+
+on:
+  push:
+    branches: ["data-run-academic-targeted*"]
+    paths: ["research/acquire/TRIGGER_ACADEMIC_TARGETED.md"]
+
+concurrency:
+  group: academic-openalex
+  cancel-in-progress: false
+
+jobs:
+  academic-targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Restore source cache
+        id: sources
+        uses: actions/cache@v4
+        with:
+          path: data/raw/acquired/
+          key: minggui-public-sources-v1-fe44aa6f
+      - name: Acquire sources if needed
+        if: steps.sources.outputs.cache-hit != 'true'
+        run: python research/acquire/fetch_public_datasets.py
+      - name: Verify sources
+        run: python research/quality/verify_public_sources.py data/raw/acquired
+      - name: Normalize BHHT
+        run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/academic_targeted
+      - name: Select 5k modern academic/science people
+        run: >
+          python research/cohorts/select_specialist_bhht.py
+          data/processed/academic_targeted/bhht_core.csv.gz
+          data/processed/academic_targeted/academic_5k.csv.gz
+          --mode academic
+          --target 5000
+          --min-birth 1940
+      - name: Build ORCID bridge
+        run: >
+          python research/acquire/fetch_wikidata_external_ids.py
+          data/processed/academic_targeted/academic_5k.csv.gz
+          data/processed/academic_targeted/orcid_bridge.csv.gz
+          --property P496
+          --id-column wikidata_code
+          --batch-size 120
+      - name: Fetch OpenAlex works
+        run: >
+          python research/acquire/fetch_openalex_academic_events.py
+          data/processed/academic_targeted/academic_5k.csv.gz
+          data/processed/academic_targeted/openalex
+          --id-column wikidata_code
+          --limit 5000
+          --max-works-per-author 300
+          --orcid-map data/processed/academic_targeted/orcid_bridge.csv.gz
+      - name: Build annual academic states
+        run: >
+          python research/pipeline/build_academic_year_states.py
+          data/processed/academic_targeted/openalex/academic_events.csv.gz
+          data/processed/academic_targeted/openalex/academic_year_states.csv.gz
+      - name: Show reports
+        if: always()
+        run: find data/processed/academic_targeted -name '*.report.json' -print -exec cat {} \; || true
+      - name: Upload targeted academic enrichment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-targeted-academic-enrichment
+          path: data/processed/academic_targeted/
+          retention-days: 30
+          if-no-files-found: warn
