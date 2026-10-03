@@ -51,3 +51,42 @@ After the 11.8k overlap cohort is validated, build a larger **stratified BHHT ex
 This is preferable to simply taking the globally most famous people because that would amplify Europe/US and occupation-selection bias.
 
 For the full 2.29M biography universe, keep BHHT as the year-level reality baseline and use Wikidata dumps for eventual exact-date enrichment at scale. Wikidata itself recommends dumps when the desired result set is very large.
+
+
+## Balanced exact-date cohort result
+
+The first balanced 100,000-person BHHT cohort has now completed.
+
+Sampling frame:
+- 1,905,682 eligible BHHT records (1800–2005, non-missing score >= 2)
+- 908 non-empty strata
+- dimensions: region × level-1 occupation × birth era × Wikipedia-edition tier
+- deterministic within-stratum sampling with inverse sampling weights
+
+Wikidata P569 enrichment:
+- requested: 100,000
+- people with any birth assertion: 98,979
+- people with day precision: 84,255
+- day precision + BHHT birth-year agreement: 83,017
+- people with multiple/conflicting source values are retained rather than silently overwritten
+
+Conflict-safe provisional canonicalization of the completed artifact:
+- canonical unique day: 78,491
+- canonical preferred day: 3,564
+- **primary unambiguous day-level total: 82,055**
+- conflicting day values: 962
+- year-only: 13,874
+- month-only: 695
+- no eligible day-level value: 1,393
+
+For the calendar-conservative first BaZi experiment, 63,055 canonical records are born in 1900 or later. Pre-1900 records remain available but are held out of the primary experiment until the source calendar model is reliably preserved/normalized.
+
+The 100k sampled cohort itself is materially less Europe-heavy than the full BHHT population:
+- Europe 35,752
+- America 26,078
+- Asia 15,543
+- Oceania 9,190
+- Africa 8,418
+- missing region 5,019
+
+This is now large enough for the first serious three-pillar benchmark.
