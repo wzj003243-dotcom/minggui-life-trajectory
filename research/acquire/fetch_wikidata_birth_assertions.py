@@ -29,7 +29,7 @@ def read_candidates(path: Path, limit: int):
     rows=[]
     with gzip.open(path,"rt",encoding="utf-8",newline="") as f:
         for x in csv.DictReader(f):
-            q=(x.get("wikidata_code") or "").strip()
+            q=(x.get("wikidata_id") or x.get("wikidata_code") or "").strip()
             birth=(x.get("birth") or "").strip()
             if not re.fullmatch(r"Q\\d+", q) or not birth:
                 continue
