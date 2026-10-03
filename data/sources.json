@@ -1,0 +1,7 @@
+[
+  {"id":"wikidata","role":"primary-entity-backbone","license":"CC0","use":"birth/date/place/occupation/education/awards/entity ids","public":true},
+  {"id":"pantheon-1","role":"benchmark","license":"see Harvard Dataverse record","use":"occupation/geography/notability benchmark","public":true},
+  {"id":"bhht","role":"large-biography-cohort","license":"dataset release terms / CC-aligned","use":"cross-verified notable-person cohort","public":true},
+  {"id":"astro-databank","role":"high-precision-birth-time-research","license":"public wiki facts for non-commercial context; XML export separately licensed","use":"birth time + Rodden reliability rating","public":false},
+  {"id":"cbdb","role":"historical-china-research","license":"current standalone release CC BY-NC-SA 4.0; newer data has stricter terms","use":"historical Chinese biographies; do not expose restricted records","public":false}
+]
