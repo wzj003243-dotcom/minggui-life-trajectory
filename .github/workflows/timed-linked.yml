@@ -8,8 +8,8 @@ on:
       - "research/acquire/TRIGGER_TIMED_LINKED.md"
 
 concurrency:
-  group: timed-linked-${{ github.ref }}
-  cancel-in-progress: true
+  group: wikidata-heavy
+  cancel-in-progress: false
 
 jobs:
   timed-linked:
