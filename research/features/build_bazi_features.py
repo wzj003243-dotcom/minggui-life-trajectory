@@ -166,8 +166,10 @@ def main():
             y,m,d=date
             calendar=(row.get(args.calendar_column) or "").lower()
             # Current feature engine treats post-1582 explicit Julian records as unsupported until converted.
-            if "julian" in calendar and (y,m,d)>=(1582,10,15):
+            explicit_julian="julian" in calendar or calendar.endswith("Q1985786".lower())
+            if explicit_julian and (y,m,d)>=(1582,10,15):
                 skipped+=1;continue
+            calendar_uncertain_historical=(not calendar and y<1900)
             known_time=args.mode=="timed"
             t=parse_time(row.get(args.time_column) or "") if known_time else None
             if known_time and not t:
