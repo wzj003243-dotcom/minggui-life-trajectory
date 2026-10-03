@@ -76,6 +76,9 @@ jobs:
           --id-column wikidata_id
           --limit 2000
 
+      - name: Install biography parser
+        run: pip install mwparserfromhell==0.7.2
+
       - name: Extract date-bearing timeline candidates
         run: >
           python research/extraction/extract_timeline_candidates.py
