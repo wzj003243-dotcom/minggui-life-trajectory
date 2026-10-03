@@ -1,0 +1,33 @@
+{
+  "version":"1.0.0",
+  "layers":{
+    "raw_calendar":[
+      "birth_year","birth_month","birth_day","birth_hour_if_known","timezone","longitude","solar_term_offset"
+    ],
+    "pillars":[
+      "year_stem","year_branch","month_stem","month_branch","day_stem","day_branch","hour_stem","hour_branch"
+    ],
+    "elemental":[
+      "stem_element_counts","branch_primary_element_counts","hidden_stem_element_counts",
+      "day_master_element","season_element","element_entropy","element_imbalance"
+    ],
+    "ten_gods":[
+      "visible_ten_god_counts","hidden_ten_god_counts","ten_god_entropy"
+    ],
+    "relations":[
+      "stem_combinations","stem_clashes","branch_combinations","branch_six_harmony",
+      "branch_three_harmony","branch_clashes","branch_harms","branch_punishments","branch_breaks"
+    ],
+    "seasonal_strength":[
+      "day_master_season_support","root_count","supporting_element_weight","draining_element_weight"
+    ],
+    "luck_cycles_optional":[
+      "dayun_index","dayun_stem","dayun_branch","annual_stem","annual_branch",
+      "natal_dayun_relation_vector","natal_annual_relation_vector"
+    ]
+  },
+  "excluded_from_raw_features":[
+    "富贵格局","命硬","克夫","克妻","大灾","用神结论","吉凶断语"
+  ],
+  "rule":"Subjective school-level interpretations live in a separate versioned tradition rulebook and must never be silently encoded as objective birth features."
+}
