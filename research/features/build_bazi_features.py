@@ -32,6 +32,7 @@ SANHE=[set("申子辰"),set("亥卯未"),set("寅午戌"),set("巳酉丑")]
 SANHUI=[set("寅卯辰"),set("巳午未"),set("申酉戌"),set("亥子丑")]
 GAN_HE={frozenset(x) for x in [("甲","己"),("乙","庚"),("丙","辛"),("丁","壬"),("戊","癸")]}
 GAN_CHONG={frozenset(x) for x in [("甲","庚"),("乙","辛"),("丙","壬"),("丁","癸")]}
+RELATION_KEYS=("zhi_liuhe","zhi_chong","zhi_hai","zhi_po","zhi_xing","zhi_self_xing","gan_he","gan_chong","sanhe_complete","sanhui_complete")
 
 def opencsv(path:Path,mode:str):
     if "r" in mode:
@@ -91,7 +92,10 @@ def entropy(counts:Counter):
     return -sum((v/total)*math.log(v/total) for v in counts.values() if v)
 
 def relation_counts(gans,zhis):
-    rel=Counter()
+    # Always emit the same schema even when a relation count is zero.
+    # csv.DictWriter fixes fieldnames from the first record; sparse Counter keys
+    # previously caused later charts with e.g. self-punishment to add a new column.
+    rel=Counter({k:0 for k in RELATION_KEYS})
     for i in range(len(zhis)):
         for j in range(i+1,len(zhis)):
             pair=frozenset((zhis[i],zhis[j]))
