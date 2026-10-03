@@ -13,10 +13,14 @@ PROPS={
  "P69":"education.affiliation",
  "P108":"career.employer",
  "P39":"career.position",
+ "P106":"career.occupation",
+ "P54":"career.team",
+ "P410":"career.military_rank",
  "P551":"migration.residence",
  "P166":"recognition.award",
  "P463":"organization.member",
  "P1416":"organization.affiliation",
+ "P102":"organization.party",
  "P26":"relationship.spouse"
 }
 TIME_QUALIFIERS={"P580":"start","P582":"end","P585":"point"}
