@@ -1,0 +1,94 @@
+name: Fast public event cohort
+
+on:
+  pull_request:
+    paths:
+      - "research/acquire/TRIGGER_FAST_EVENTS.md"
+
+jobs:
+  fast-events:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Acquire verified public datasets
+        run: python research/acquire/fetch_public_datasets.py
+
+      - name: Normalize BHHT backbone
+        run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/fast
+
+      - name: Select balanced 10k cohort
+        run: >
+          python research/cohorts/select_stratified_bhht.py
+          data/processed/fast/bhht_core.csv.gz
+          data/processed/fast/bhht_stratified_10k.csv.gz
+          --target 10000
+          --min-per-stratum 3
+
+      - name: Fetch precise Wikidata births
+        run: >
+          python research/acquire/fetch_wikidata_birth_assertions.py
+          data/processed/fast/bhht_stratified_10k.csv.gz
+          data/processed/fast/wikidata_birth_assertions_10k.csv.gz
+          --limit 0
+          --batch-size 150
+
+      - name: Canonicalize births
+        run: >
+          python research/pipeline/canonicalize_births.py
+          data/processed/fast/wikidata_birth_assertions_10k.csv.gz
+          data/processed/fast/canonical_births_10k.csv.gz
+
+      - name: Select clean 8k event cohort
+        run: >
+          python research/cohorts/select_event_enrichment_cohort.py
+          data/processed/fast/bhht_stratified_10k.csv.gz
+          data/processed/fast/canonical_births_10k.csv.gz
+          data/processed/fast/event_cohort_8k.csv.gz
+          --target 8000
+
+      - name: Fetch dated life claims via WDQS
+        run: >
+          python research/acquire/fetch_wikidata_dated_claims_sparql.py
+          data/processed/fast/event_cohort_8k.csv.gz
+          data/processed/fast/public_life_claims_8k.csv.gz
+          --id-column wikidata_id
+          --batch-size 120
+
+      - name: Normalize claims to age-aware life events
+        run: >
+          python research/pipeline/claims_to_life_events.py
+          data/processed/fast/public_life_claims_8k.csv.gz
+          data/processed/fast/canonical_births_10k.csv.gz
+          data/processed/fast/public_life_events_8k.csv.gz
+
+      - name: Install BaZi dependency
+        run: pip install lunar_python==1.4.8
+
+      - name: Build three-pillar features for canonical births
+        run: >
+          python research/features/build_bazi_features.py
+          data/processed/fast/canonical_births_10k.csv.gz
+          data/processed/fast/bazi_features_10k.csv.gz
+          --mode date
+          --id-column wikidata_id
+          --date-column birth_date
+          --calendar-column calendar_model
+
+      - name: Show reports
+        if: always()
+        run: |
+          find data/processed/fast -maxdepth 1 -name '*.report.json' -print -exec cat {} \; || true
+
+      - name: Upload fast event cohort
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-fast-public-event-cohort
+          path: data/processed/fast/
+          retention-days: 30
+          if-no-files-found: warn
