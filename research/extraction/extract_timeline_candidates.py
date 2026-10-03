@@ -5,6 +5,7 @@ assign a final event label; it creates source-backed candidates for later adjudi
 """
 from __future__ import annotations
 import argparse,csv,gzip,json,re
+import mwparserfromhell
 from pathlib import Path
 
 YEAR=re.compile(r"\b(?:18|19|20)\d{2}\b")
@@ -39,7 +40,7 @@ def main():
     with gzip.open(args.biographies,"rt",encoding="utf-8") as f,gzip.open(out,"wt",encoding="utf-8",newline="") as w:
         wr=csv.DictWriter(w,fieldnames=fields);wr.writeheader()
         for line in f:
-            rec=json.loads(line);parts=[clean(x) for x in SENTENCE.split(rec.get("extract","")) if clean(x)]
+            rec=json.loads(line);plain=wikitext_to_plain(rec.get("wikitext",""));parts=[clean(x) for x in SENTENCE.split(plain) if clean(x)]
             for i,s in enumerate(parts):
                 years=YEAR.findall(s);ages=AGE_EN.findall(s)+AGE_ZH.findall(s)
                 if not years and not ages:continue
