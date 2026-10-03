@@ -35,6 +35,14 @@ jobs:
           data/processed/smoke/cohort_250.csv.gz
           --target 250
           --min-per-stratum 1
+      - name: Build 200-person Wikipedia sitelink bridge
+        run: >
+          python research/acquire/fetch_wikipedia_sitelinks.py
+          data/processed/smoke/cohort_250.csv.gz
+          data/processed/smoke/sitelinks_200.csv.gz
+          --id-column wikidata_code
+          --limit 200
+
       - name: Fetch 200 revision-pinned biographies
         run: >
           python research/acquire/fetch_wikipedia_biographies.py
@@ -42,6 +50,7 @@ jobs:
           data/processed/smoke/biographies_200.jsonl.gz
           --id-column wikidata_code
           --limit 200
+          --sitelink-map data/processed/smoke/sitelinks_200.csv.gz
       - name: Install parser
         run: pip install mwparserfromhell==0.7.2
       - name: Extract candidates
