@@ -6,6 +6,7 @@ for timed-cohort modeling: ADB birth evidence -> normalized birth instant/date -
 """
 from __future__ import annotations
 import argparse,csv,gzip,json
+from collections import Counter
 from pathlib import Path
 
 PRIMARY={"AA","A","B"}
@@ -29,6 +30,10 @@ def main():
     births=read(Path(args.astro_births),"adb_id")
     links=read(Path(args.validated_links),"adb_id")
     features=read(Path(args.bazi_features),"person_id")
+    verified_q_counts=Counter(
+        x.get("wikidata_id") for x in links.values()
+        if x.get("identity_status")=="verified_day_match" and x.get("wikidata_id")
+    )
     feature_fields=[]
     if features:
         feature_fields=[x for x in next(iter(features.values())).keys() if x!="person_id"]
@@ -54,10 +59,8 @@ def main():
             f=features.get(adb_id);ln=links.get(adb_id)
             if not f or not ln or not ln.get("wikidata_id") or ln.get("identity_status")!="verified_day_match":continue
             q=ln["wikidata_id"]
-            if q in seen_q:
+            if verified_q_counts[q] != 1:
                 duplicate_q+=1
-                # Preserve one QID -> one timed birth row in primary cohort.
-                # Duplicates remain visible in report for manual review.
                 continue
             seen_q.add(q)
             rr=b["rodden_rating"];by_rating[rr]=by_rating.get(rr,0)+1
@@ -85,8 +88,9 @@ def main():
     report={
       "linked_primary_timed_people":rows,
       "unique_wikidata_ids":len(seen_q),
-      "duplicate_verified_wikidata_ids_skipped":duplicate_q,
-      "identity_gate":"verified_day_match",
+      "ambiguous_verified_rows_skipped":duplicate_q,
+      "ambiguous_verified_qid_groups":sum(v>1 for v in verified_q_counts.values()),
+      "identity_gate":"verified_day_match + one-to-one unique Wikidata QID",
       "rodden_counts":by_rating,
       "calendar_counts":by_calendar,
       "feature_version":"bazi-objective-v0.1"
