@@ -15,3 +15,5 @@ Fourth run: throttle-safe Wikipedia/Wikidata resolution.
 Fifth run: balanced 100k exact-date cohort + calendar models.
 
 Sixth run: canonical births + objective three-pillar features.
+
+Seventh run: rebuild with calendar-normalized BaZi features.
