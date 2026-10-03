@@ -1,0 +1,44 @@
+{
+  "dataset_id": "minggui-academic-enrichment-v0.1",
+  "status": "frozen-research-snapshot",
+  "workflow": {
+    "run_id": 37127877893,
+    "artifact_id": 11275930526,
+    "artifact_digest": "sha256:37c154216740ed7b59754686c73d435b3579d87185cedff83a7295c254eee015"
+  },
+  "selection": {
+    "input_people": 3000,
+    "design": "balanced BHHT sample across region, occupation, birth era, Wikipedia coverage",
+    "wikidata_orcid_people": 56,
+    "openalex_exact_orcid_authors": 41,
+    "ambiguous_openalex_orcids": 9
+  },
+  "events": {
+    "scholarly_work_rows": 9534,
+    "people_with_events": 41,
+    "works_per_author_median": 186,
+    "works_per_author_mean": 232.5366,
+    "works_per_author_p25": 73,
+    "works_per_author_p75": 391,
+    "event_date_range": [
+      "1928-11-01",
+      "2026-09-30"
+    ],
+    "doi_nonmissing_rate": 0.80879,
+    "publication_affiliation_rate": 0.61936,
+    "primary_topic_rate": 0.98395
+  },
+  "trajectory_density": {
+    "median_observed_span_years": 35,
+    "median_unique_fields": 10,
+    "median_unique_institutions": 8,
+    "median_institution_countries": 3,
+    "annual_state_rows": 1549
+  },
+  "identity": "Wikidata P496 -> exact ORCID -> exact OpenAlex author; no fuzzy name matching",
+  "leakage_policy": [
+    "Publication date, authorship, publication-time institution and topic may be used at historical cutoffs.",
+    "Current works_count and cited_by_count are audit metadata only and must not be historical predictors.",
+    "Seven authors hit the 500-work cap in this snapshot; later snapshots should explicitly model truncation."
+  ]
+}
