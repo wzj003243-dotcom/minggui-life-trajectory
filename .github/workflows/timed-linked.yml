@@ -1,0 +1,126 @@
+name: Timed linked life dataset
+
+on:
+  push:
+    branches:
+      - "data-run-timed-linked*"
+    paths:
+      - "research/acquire/TRIGGER_TIMED_LINKED.md"
+
+concurrency:
+  group: timed-linked-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  timed-linked:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Acquire and normalize official Astro sample
+        run: python research/acquire/fetch_astro_sample.py
+
+      - name: Install BaZi dependency
+        run: pip install lunar_python==1.4.8
+
+      - name: Build objective four-pillar features
+        run: >
+          python research/features/build_bazi_features.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          --mode timed
+          --id-column adb_id
+          --date-column birth_date
+          --time-column birth_time_local
+          --calendar-column calendar
+          --rating-column rodden_rating
+
+      - name: Resolve Astro Wikipedia pages to Wikidata
+        run: >
+          python research/acquire/resolve_astro_wikidata.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_links.csv.gz
+
+      - name: Build canonical timed linked cohort
+        run: >
+          python research/pipeline/build_timed_linked_cohort.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_links.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          data/processed/timed/timed_linked_cohort.csv.gz
+
+      - name: Build canonical birth table for age arithmetic
+        run: >
+          python research/pipeline/timed_linked_to_canonical_births.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/timed_canonical_births.csv.gz
+
+      - name: Fetch dated structured life claims
+        run: >
+          python research/acquire/fetch_wikidata_claims_api.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/timed_life_claims.csv.gz
+          --id-column wikidata_id
+          --rating-column rodden_rating
+          --ratings AA,A,B
+          --batch-size 35
+          --sleep 0.20
+
+      - name: Normalize structured claims to age-aware life events
+        run: >
+          python research/pipeline/claims_to_life_events.py
+          data/processed/timed/timed_life_claims.csv.gz
+          data/processed/timed/timed_canonical_births.csv.gz
+          data/processed/timed/timed_life_events_structured.csv.gz
+
+      - name: Fetch dated notable works
+        run: >
+          python research/acquire/fetch_notable_work_dates.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/timed_notable_work_dates.csv.gz
+          --id-column wikidata_id
+
+      - name: Normalize notable works
+        run: >
+          python research/pipeline/notable_works_to_life_events.py
+          data/processed/timed/timed_notable_work_dates.csv.gz
+          data/processed/timed/timed_canonical_births.csv.gz
+          data/processed/timed/timed_life_events_creation.csv.gz
+
+      - name: Merge timed life-event streams
+        run: >
+          python research/pipeline/merge_life_events.py
+          data/processed/timed/timed_life_events.csv.gz
+          data/processed/timed/timed_life_events_structured.csv.gz
+          data/processed/timed/timed_life_events_creation.csv.gz
+
+      - name: Resolve event subject semantics
+        run: >
+          python research/acquire/resolve_event_subjects.py
+          data/processed/timed/timed_life_events.csv.gz
+          data/processed/timed/timed_event_subject_entities.csv.gz
+
+      - name: Build timed person-age sequences
+        run: >
+          python research/pipeline/build_timed_person_age_sequences.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/timed_life_events.csv.gz
+          data/processed/timed/timed_person_age_sequences.csv.gz
+
+      - name: Show reports
+        if: always()
+        run: |
+          find data/processed/timed -maxdepth 1 -name '*.report.json' -print -exec cat {} \; || true
+
+      - name: Upload linked timed-life dataset
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-linked-life-dataset
+          path: data/processed/timed/
+          retention-days: 30
+          if-no-files-found: warn
