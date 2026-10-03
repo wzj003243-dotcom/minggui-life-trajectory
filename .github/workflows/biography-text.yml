@@ -68,13 +68,22 @@ jobs:
           data/processed/biography/text_cohort_2k.csv.gz
           --target 2000
 
+      - name: Build Wikipedia sitelink bridge
+        run: >
+          python research/acquire/fetch_wikipedia_sitelinks.py
+          data/processed/biography/text_cohort_2k.csv.gz
+          data/processed/biography/wikipedia_sitelinks_2k.csv.gz
+          --id-column wikidata_code
+          --limit 2000
+
       - name: Fetch revision-pinned biographies
         run: >
           python research/acquire/fetch_wikipedia_biographies.py
           data/processed/biography/text_cohort_2k.csv.gz
           data/processed/biography/wikipedia_biographies_2k.jsonl.gz
-          --id-column wikidata_id
+          --id-column wikidata_code
           --limit 2000
+          --sitelink-map data/processed/biography/wikipedia_sitelinks_2k.csv.gz
 
       - name: Install biography parser
         run: pip install mwparserfromhell==0.7.2
