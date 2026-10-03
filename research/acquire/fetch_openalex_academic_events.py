@@ -62,7 +62,7 @@ def read_qids(path,id_column,limit):
     out=[]
     with gzip.open(path,"rt",encoding="utf-8",newline="") as f:
         for r in csv.DictReader(f):
-            q=(r.get(id_column) or "").strip()
+            q=(r.get(id_column) or r.get("wikidata_id") or r.get("wikidata_code") or "").strip()
             if q.startswith("Q") and q[1:].isdigit():out.append(q)
     out=sorted(set(out),key=lambda x:int(x[1:]))
     return out[:limit] if limit>0 else out
