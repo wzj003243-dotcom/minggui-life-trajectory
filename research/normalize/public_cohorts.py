@@ -77,8 +77,8 @@ def child_text(parent, tag):
 
 def normalize_astro(raw_zip: Path, out: Path):
     fields=[
-      "adb_id","name","gender","rodden_rating","birth_date","birth_time_local","time_type",
-      "timezone_abbr","place","country","latitude","longitude","wikipedia_url","adb_url"
+      "adb_id","name","gender","rodden_rating","birth_date","birth_time_local","calendar","time_type","time_type_code",
+      "meridian","jd_ut","timezone_abbr","place","country","latitude","longitude","wikipedia_url","adb_url"
     ]
     ratings=Counter(); rows=0; wikipedia=0
     with zipfile.ZipFile(raw_zip) as z:
@@ -104,7 +104,11 @@ def normalize_astro(raw_zip: Path, out: Path):
                   "rodden_rating":rr,
                   "birth_date":(sbdate.text or "").strip() if sbdate is not None and sbdate.text else None,
                   "birth_time_local":(sbtime.text or "").strip() if sbtime is not None and sbtime.text else None,
+                  "calendar":sbdate.attrib.get("ccalendar") if sbdate is not None else None,
                   "time_type":sbtime.attrib.get("stimetype") if sbtime is not None else None,
+                  "time_type_code":sbtime.attrib.get("ctimetype") if sbtime is not None else None,
+                  "meridian":sbtime.attrib.get("stmerid") if sbtime is not None else None,
+                  "jd_ut":sbtime.attrib.get("jd_ut") if sbtime is not None else None,
                   "timezone_abbr":sbtime.attrib.get("sznabbr") if sbtime is not None else None,
                   "place":(place.text or "").strip() if place is not None and place.text else None,
                   "country":(country.text or "").strip() if country is not None and country.text else None,
