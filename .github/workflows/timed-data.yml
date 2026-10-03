@@ -14,15 +14,29 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Acquire and normalize official Astro sample
         run: python research/acquire/fetch_astro_sample.py
+
       - name: Resolve Wikipedia pages to Wikidata
-        run: python research/acquire/resolve_astro_wikidata.py data/processed/timed/astro_public_births.csv.gz data/processed/timed/adb_wikidata_links.csv.gz
-      - name: Fetch dated Wikidata life claims for AA/A/B\n        run: python research/acquire/fetch_wikidata_claims_api.py data/processed/timed/adb_wikidata_links.csv.gz data/processed/timed/timed_life_claims.csv.gz --ratings AA,A,B --batch-size 50
+        run: >
+          python research/acquire/resolve_astro_wikidata.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_links.csv.gz
+
+      - name: Fetch dated Wikidata life claims for AA/A/B
+        run: >
+          python research/acquire/fetch_wikidata_claims_api.py
+          data/processed/timed/adb_wikidata_links.csv.gz
+          data/processed/timed/timed_life_claims.csv.gz
+          --ratings AA,A,B
+          --batch-size 50
+
       - name: Show reports
         if: always()
         run: |
-          find data/processed/timed -name '*.report.json' -maxdepth 1 -print -exec cat {} \; || true
+          find data/processed/timed -maxdepth 1 -name '*.report.json' -print -exec cat {} \; || true
+
       - name: Upload processed timed cohort
         if: always()
         uses: actions/upload-artifact@v4
