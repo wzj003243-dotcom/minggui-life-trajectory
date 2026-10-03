@@ -43,7 +43,6 @@ def main():
                 date=(r.get("birth_time_value") or "")[:10]
                 cal=r.get("calendar_model") or ""
                 by_key[(date,cal)]=r
-            preferred={(k,r) for k,r in []}  # documentation placeholder; see pref_keys below
             pref_keys={k for k,r in by_key.items() if rank_name(r.get("statement_rank"))=="preferred"}
             if pref_keys and len(pref_keys)==1:
                 chosen_key=next(iter(pref_keys));status="canonical_preferred"
