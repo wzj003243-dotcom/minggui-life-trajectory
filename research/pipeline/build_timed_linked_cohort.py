@@ -21,13 +21,13 @@ def read(path,key):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("astro_births")
-    ap.add_argument("adb_links")
+    ap.add_argument("validated_links")
     ap.add_argument("bazi_features")
     ap.add_argument("output")
     args=ap.parse_args()
 
     births=read(Path(args.astro_births),"adb_id")
-    links=read(Path(args.adb_links),"adb_id")
+    links=read(Path(args.validated_links),"adb_id")
     features=read(Path(args.bazi_features),"person_id")
     feature_fields=[]
     if features:
@@ -52,7 +52,7 @@ def main():
         for adb_id,b in births.items():
             if b.get("rodden_rating") not in PRIMARY:continue
             f=features.get(adb_id);ln=links.get(adb_id)
-            if not f or not ln or not ln.get("wikidata_id"):continue
+            if not f or not ln or not ln.get("wikidata_id") or ln.get("identity_status")!="verified_day_match":continue
             q=ln["wikidata_id"]
             if q in seen_q:
                 duplicate_q+=1
@@ -80,7 +80,8 @@ def main():
     report={
       "linked_primary_timed_people":rows,
       "unique_wikidata_ids":len(seen_q),
-      "duplicate_wikidata_ids_skipped":duplicate_q,
+      "duplicate_verified_wikidata_ids_skipped":duplicate_q,
+      "identity_gate":"verified_day_match",
       "rodden_counts":by_rating,
       "calendar_counts":by_calendar,
       "feature_version":"bazi-objective-v0.1"
