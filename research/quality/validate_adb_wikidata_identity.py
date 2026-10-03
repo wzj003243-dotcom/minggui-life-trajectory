@@ -48,9 +48,9 @@ def julian_to_gregorian(y,m,d):
     day=e-(153*mm2+2)//5+1;month=mm2+3-12*(mm2//10);year=100*b+dd-4800+(mm2//10)
     return date(year,month,day)
 
-def normalized_p569(ent):
+def normalized_time_claims(ent,prop):
     exact=[];coarse=[];raw=[]
-    for claim in ent.get("claims",{}).get("P569",[]):
+    for claim in ent.get("claims",{}).get(prop,[]):
         if claim.get("rank")=="deprecated":continue
         v=claim.get("mainsnak",{}).get("datavalue",{}).get("value")
         if not isinstance(v,dict) or not v.get("time"):continue
@@ -95,7 +95,8 @@ def main():
 
     out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
     fields=["adb_id","rodden_rating","wikidata_id","wikipedia_url","astro_birth_date_normalized",
-            "wikidata_day_dates","identity_status","matching_date","wikidata_birth_assertions_json"]
+            "wikidata_day_dates","identity_status","matching_date","wikidata_birth_assertions_json",
+            "wikidata_death_exact_dates","wikidata_death_years","wikidata_death_assertions_json"]
     counts=defaultdict(int);verified_q=defaultdict(list)
     with gzip.open(out,"wt",encoding="utf-8",newline="") as w:
         wr=csv.DictWriter(w,fieldnames=fields);wr.writeheader()
@@ -103,7 +104,11 @@ def main():
             aid=l.get("adb_id","");q=l.get("wikidata_id","")
             f=features.get(aid);b=births.get(aid)
             normalized=f.get("birth_date","") if f else ""
-            exact,coarse,raw=normalized_p569(entities.get(q,{})) if q else ([],[],[])
+            ent=entities.get(q,{}) if q else {}
+            exact,coarse,raw=normalized_time_claims(ent,"P569") if q else ([],[],[])
+            death_exact,death_coarse,death_raw=normalized_time_claims(ent,"P570") if q else ([],[],[])
+            death_years=sorted({int(x["time"].lstrip("+").split("-",1)[0]) for x in death_raw
+                                if x.get("time") and x["time"].lstrip("+").split("-",1)[0].isdigit()})
             if not q:status="no_qid"
             elif not f:status="no_primary_bazi_feature"
             elif normalized in exact:status="verified_day_match"
@@ -118,7 +123,10 @@ def main():
               "astro_birth_date_normalized":normalized,
               "wikidata_day_dates":"|".join(exact),"identity_status":status,
               "matching_date":normalized if status=="verified_day_match" else "",
-              "wikidata_birth_assertions_json":json.dumps(raw,separators=(",",":"))
+              "wikidata_birth_assertions_json":json.dumps(raw,separators=(",",":")),
+              "wikidata_death_exact_dates":"|".join(death_exact),
+              "wikidata_death_years":"|".join(map(str,death_years)),
+              "wikidata_death_assertions_json":json.dumps(death_raw,separators=(",",":"))
             })
     duplicate_verified={q:a for q,a in verified_q.items() if len(a)>1}
     report={
