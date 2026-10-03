@@ -22,6 +22,8 @@ jobs:
         run: python research/cohorts/select_stratified_bhht.py data/processed/public/bhht_core.csv.gz data/processed/public/bhht_stratified_100k.csv.gz --target 100000
       - name: Fetch precision-aware Wikidata births for balanced 100k cohort
         run: python research/acquire/fetch_wikidata_birth_assertions.py data/processed/public/bhht_stratified_100k.csv.gz data/processed/public/wikidata_birth_assertions_100k.csv.gz --limit 0 --batch-size 150
+      - name: Canonicalize conflict-safe birth table
+        run: python research/pipeline/canonicalize_births.py data/processed/public/wikidata_birth_assertions_100k.csv.gz data/processed/public/canonical_births_100k.csv.gz
       - name: Show reports
         if: always()
         run: |
@@ -29,6 +31,7 @@ jobs:
           cat data/processed/public/public_cohort_profile.json || true
           cat data/processed/public/bhht_stratified_100k.report.json || true
           cat data/processed/public/wikidata_birth_assertions_100k.report.json || true
+          cat data/processed/public/canonical_births_100k.report.json || true
       - name: Upload processed public cohort
         if: always()
         uses: actions/upload-artifact@v4
