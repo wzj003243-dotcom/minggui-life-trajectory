@@ -7,3 +7,5 @@ Retry after repo-root import fix.
 Retry after source-format fix.
 
 Switch timeline acquisition to Wikidata claims API.
+
+Run after clean birth-enrichment rewrite and claims API switch.
