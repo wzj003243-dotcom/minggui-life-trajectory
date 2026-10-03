@@ -1,0 +1,1 @@
+# Public reality controls\n\nv1: frozen exact-date cohort -> birth-only non-metaphysical control matrix.\n
