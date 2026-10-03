@@ -21,3 +21,6 @@ for q in QIDS:
           for c in e.get("claims",{}).get(prop,[])
         ]
     print(q,json.dumps(vals,ensure_ascii=False))
+
+from research.acquire.fetch_openalex_academic_events import wikidata_orcids
+print("academic_single", {k: sorted(v) for k,v in wikidata_orcids(["Q483086"],batch_size=1).items()})
