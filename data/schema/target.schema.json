@@ -1,0 +1,20 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://minggui.dev/schema/target.v1.json",
+  "title":"MingGuiFutureTarget",
+  "type":"object",
+  "required":["target_id","person_id","information_cutoff","target_spec_version","target_name","value"],
+  "properties":{
+    "target_id":{"type":"string"},
+    "person_id":{"type":"string"},
+    "information_cutoff":{"type":"string"},
+    "horizon_start":{"type":["string","null"]},
+    "horizon_end":{"type":["string","null"]},
+    "target_spec_version":{"type":"string"},
+    "target_name":{"type":"string"},
+    "value":{"type":["number","string","boolean","null"]},
+    "supporting_event_ids":{"type":"array","items":{"type":"string"},"uniqueItems":true},
+    "label_confidence":{"type":"number","minimum":0,"maximum":1}
+  },
+  "additionalProperties":false
+}
