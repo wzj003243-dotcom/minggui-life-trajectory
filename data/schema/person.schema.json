@@ -1,0 +1,21 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://minggui.dev/schema/person.v1.json",
+  "title":"MingGuiPerson",
+  "type":"object",
+  "required":["person_id","canonical_name","identifiers"],
+  "properties":{
+    "person_id":{"type":"string","minLength":1},
+    "canonical_name":{"type":"string","minLength":1},
+    "aliases":{"type":"array","items":{"type":"string"},"uniqueItems":true},
+    "identifiers":{
+      "type":"object",
+      "additionalProperties":{"type":"string"},
+      "description":"External stable ids such as wikidata=Q..., wikipedia_en_pageid=..."
+    },
+    "sex_or_gender_source_value":{"type":["string","null"]},
+    "notability_source":{"type":["string","null"]},
+    "metadata":{"type":"object"}
+  },
+  "additionalProperties":false
+}
