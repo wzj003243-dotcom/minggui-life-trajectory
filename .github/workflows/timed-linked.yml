@@ -106,6 +106,12 @@ jobs:
           data/processed/timed/timed_life_events_structured.csv.gz
           data/processed/timed/timed_life_events_creation.csv.gz
 
+      - name: Audit timeline coverage
+        run: >
+          python research/quality/timeline_coverage.py
+          data/processed/timed/timed_life_events.csv.gz
+          data/processed/timed/timed_timeline_coverage.csv.gz
+
       - name: Resolve event subject semantics
         run: >
           python research/acquire/resolve_event_subjects.py
