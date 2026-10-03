@@ -144,10 +144,19 @@ def main():
     ap.add_argument("--id-column",default="wikidata_id")
     ap.add_argument("--limit",type=int,default=3000)
     ap.add_argument("--max-works-per-author",type=int,default=500)
+    ap.add_argument("--orcid-map",default="")
     args=ap.parse_args()
     outdir=Path(args.output_dir);outdir.mkdir(parents=True,exist_ok=True)
     qids=read_qids(Path(args.cohort),args.id_column,args.limit)
-    q_to_orcids=wikidata_orcids(qids)
+    if args.orcid_map:
+        q_to_orcids=defaultdict(set)
+        with gzip.open(args.orcid_map,"rt",encoding="utf-8",newline="") as mf:
+            for row in csv.DictReader(mf):
+                q=(row.get("wikidata_id") or "").strip()
+                o=(row.get("external_id") or "").replace("https://orcid.org/","").upper().strip()
+                if q in set(qids) and ORCID_RE.match(o):q_to_orcids[q].add(o)
+    else:
+        q_to_orcids=wikidata_orcids(qids)
     orcid_to_qids=defaultdict(set)
     for q,os in q_to_orcids.items():
         for o in os:orcid_to_qids[o].add(q)
