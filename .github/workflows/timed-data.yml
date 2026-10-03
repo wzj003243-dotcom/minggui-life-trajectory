@@ -18,6 +18,21 @@ jobs:
       - name: Acquire and normalize official Astro sample
         run: python research/acquire/fetch_astro_sample.py
 
+      - name: Install BaZi feature dependency
+        run: pip install lunar_python==1.4.8
+
+      - name: Build objective four-pillar features
+        run: >
+          python research/features/build_bazi_features.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          --mode timed
+          --id-column adb_id
+          --date-column birth_date
+          --time-column birth_time_local
+          --calendar-column calendar
+          --rating-column rodden_rating
+
       - name: Resolve Wikipedia pages to Wikidata
         run: >
           python research/acquire/resolve_astro_wikidata.py
