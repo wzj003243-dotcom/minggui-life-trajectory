@@ -46,6 +46,14 @@ jobs:
           --target 3000
           --min-per-stratum 2
 
+      - name: Build Wikidata ORCID bridge
+        run: >
+          python research/acquire/fetch_wikidata_external_ids.py
+          data/processed/academic/bhht_stratified_3k.csv.gz
+          data/processed/academic/orcid_bridge.csv.gz
+          --property P496
+          --id-column wikidata_code
+
       - name: Enrich ORCID-verified academic timelines
         run: >
           python research/acquire/fetch_openalex_academic_events.py
@@ -54,6 +62,7 @@ jobs:
           --id-column wikidata_id
           --limit 3000
           --max-works-per-author 500
+          --orcid-map data/processed/academic/orcid_bridge.csv.gz
 
       - name: Build yearly academic state vectors
         run: >
