@@ -1,0 +1,26 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://minggui.dev/schema/birth-assertion.v1.json",
+  "title":"MingGuiBirthAssertion",
+  "type":"object",
+  "required":["assertion_id","person_id","source_id","date_precision","status"],
+  "properties":{
+    "assertion_id":{"type":"string"},
+    "person_id":{"type":"string"},
+    "date_iso":{"type":["string","null"]},
+    "date_precision":{"enum":["year","month","day","hour","minute","exact","disputed","unknown"]},
+    "time_local":{"type":["string","null"]},
+    "time_known":{"type":"boolean"},
+    "timezone":{"type":["string","null"]},
+    "timezone_confidence":{"type":["number","null"],"minimum":0,"maximum":1},
+    "place_id":{"type":["string","null"]},
+    "latitude":{"type":["number","null"],"minimum":-90,"maximum":90},
+    "longitude":{"type":["number","null"],"minimum":-180,"maximum":180},
+    "source_id":{"type":"string"},
+    "source_reliability":{"type":["string","null"]},
+    "source_confidence":{"type":["number","null"],"minimum":0,"maximum":1},
+    "status":{"enum":["single-source","cross-verified","conflicting","unresolved"]},
+    "notes":{"type":["string","null"]}
+  },
+  "additionalProperties":false
+}
