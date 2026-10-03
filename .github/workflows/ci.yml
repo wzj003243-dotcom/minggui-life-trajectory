@@ -34,3 +34,26 @@ jobs:
         run: find research -name '*.py' -print0 | xargs -0 python -m py_compile
       - name: Smoke test cutoff / target / leakage pipeline
         run: python research/tests/smoke_pipeline.py
+
+  acquire-public-data:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Acquire verified public datasets
+        run: python research/acquire/fetch_public_datasets.py
+      - name: Show acquisition report
+        if: always()
+        run: cat data/raw/acquired/acquisition_report.json || true
+      - name: Upload acquired research data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-public-data-smoke
+          path: data/raw/acquired/
+          retention-days: 14
+          if-no-files-found: warn
