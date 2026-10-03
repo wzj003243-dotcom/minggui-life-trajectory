@@ -14,7 +14,7 @@ concurrency:
 jobs:
   fast-events:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -57,13 +57,16 @@ jobs:
           data/processed/fast/event_cohort_8k.csv.gz
           --target 8000
 
-      - name: Fetch dated life claims via WDQS
+      - name: Fetch dated life claims via Wikidata claims API
         run: >
-          python research/acquire/fetch_wikidata_dated_claims_sparql.py
+          python research/acquire/fetch_wikidata_claims_api.py
           data/processed/fast/event_cohort_8k.csv.gz
           data/processed/fast/public_life_claims_8k.csv.gz
           --id-column wikidata_id
-          --batch-size 120
+          --rating-column none
+          --ratings ""
+          --batch-size 35
+          --sleep 0.20
 
       - name: Normalize claims to age-aware life events
         run: >
