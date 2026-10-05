@@ -65,9 +65,11 @@ def main():
                 if not pid:continue
                 age=num(x.get("age_mid") or x.get("age_years"))
                 dom=(x.get("domain") or (x.get("event_type") or "").split(".",1)[0] or "unknown").strip()
-                src=source_family(x.get("source_id"))
+                raw_sources=(x.get("source_families") or "").strip()
+                sources=[s for s in raw_sources.split("|") if s] if raw_sources else [source_family(x.get("source_id"))]
                 st=stage(age)
-                p=people[pid];p["events"]+=1;p["domains"][dom]+=1;p["sources"][src]+=1
+                p=people[pid];p["events"]+=1;p["domains"][dom]+=1
+                for src in sources:p["sources"][src]+=1
                 p["types"][x.get("event_type") or "unknown"]+=1
                 if st:p["stages"][st]+=1
                 total+=1
