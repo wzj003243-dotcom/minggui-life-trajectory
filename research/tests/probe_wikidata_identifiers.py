@@ -40,3 +40,20 @@ for claim in e.get("claims",{}).get("P496",[]):
     v=claim.get("mainsnak",{}).get("datavalue",{}).get("value")
     from research.acquire.fetch_openalex_academic_events import ORCID_RE
     print("claim_debug", repr(claim.get("rank")), repr(v), bool(isinstance(v,str)), bool(ORCID_RE.match(v if isinstance(v,str) else "")))
+
+from research.acquire.fetch_openalex_academic_events import resolve_openalex
+from research.acquire.fetch_musicbrainz_events import wikidata_musicbrainz
+from research.acquire.fetch_wikipedia_biographies import resolve_sitelinks, fetch_site
+
+oa,_amb=resolve_openalex({"0000-0003-3206-1556":{"Q483086"}},batch_size=1)
+print("openalex_exact", {k: (v.get("id"),v.get("display_name")) for k,v in oa.items()})
+
+music_qids=["Q26876"]
+print("music_raw", {k:sorted(v) for k,v in wikidata_musicbrainz(music_qids,batch_size=1).items()})
+
+links=resolve_sitelinks(["Q42"])
+print("wiki_links",links)
+if "Q42" in links:
+    site,title=links["Q42"]
+    rows,bad=fetch_site(site,[("Q42",title)],batch_size=1)
+    print("wiki_revision_probe", {"rows":len(rows),"failed":bad,"chars":(rows[0]["content_chars"] if rows else 0),"revision_id":(rows[0]["revision_id"] if rows else None)})
