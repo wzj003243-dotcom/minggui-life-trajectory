@@ -58,17 +58,42 @@ jobs:
         run: >
           python research/acquire/fetch_openalex_academic_events.py
           data/processed/academic/academic_targeted_800.csv.gz
-          data/processed/academic/openalex
+          data/processed/academic/openalex_orcid
           --id-column wikidata_id
           --limit 800
           --max-works-per-author 300
           --orcid-map data/processed/academic/orcid_bridge.csv.gz
 
+      - name: Build Wikidata direct OpenAlex bridge
+        run: >
+          python research/acquire/fetch_wikidata_external_ids.py
+          data/processed/academic/academic_targeted_800.csv.gz
+          data/processed/academic/openalex_bridge.csv.gz
+          --property P10283
+          --id-column wikidata_code
+
+      - name: Enrich direct OpenAlex-ID timelines
+        run: >
+          python research/acquire/fetch_openalex_direct_events.py
+          data/processed/academic/academic_targeted_800.csv.gz
+          data/processed/academic/openalex_bridge.csv.gz
+          data/processed/academic/openalex_direct
+          --id-column wikidata_id
+          --limit 800
+          --max-works-per-author 300
+
+      - name: Merge academic event streams
+        run: >
+          python research/pipeline/merge_life_events.py
+          data/processed/academic/academic_events_merged.csv.gz
+          data/processed/academic/openalex_orcid/academic_events.csv.gz
+          data/processed/academic/openalex_direct/academic_events_p10283.csv.gz
+
       - name: Build yearly academic state vectors
         run: >
           python research/pipeline/build_academic_year_states.py
-          data/processed/academic/openalex/academic_events.csv.gz
-          data/processed/academic/openalex/academic_year_states.csv.gz
+          data/processed/academic/academic_events_merged.csv.gz
+          data/processed/academic/academic_year_states.csv.gz
 
       - name: Show reports
         if: always()
