@@ -1,0 +1,99 @@
+name: Final verified timed core
+
+on:
+  push:
+    branches:
+      - "data-run-final-timed-core*"
+    paths:
+      - "research/acquire/TRIGGER_FINAL_TIMED_CORE.md"
+
+concurrency:
+  group: final-timed-core
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Acquire official Astro sample
+        run: python research/acquire/fetch_astro_sample.py
+
+      - name: Install BaZi dependency
+        run: pip install lunar_python==1.4.8
+
+      - name: Build objective timed BaZi features
+        run: >
+          python research/features/build_bazi_features.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          --mode timed
+          --id-column adb_id
+          --date-column birth_date
+          --time-column birth_time_local
+          --calendar-column calendar
+          --rating-column rodden_rating
+
+      - name: Resolve Astro Wikipedia pages to Wikidata
+        run: >
+          python research/acquire/resolve_astro_wikidata.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_links.csv.gz
+
+      - name: Lossless identity validation
+        run: >
+          python research/quality/validate_adb_wikidata_identity.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_links.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          data/processed/timed/adb_wikidata_identity_validation.csv.gz
+          --batch-size 20
+          --sleep 0.25
+
+      - name: Require zero identity API loss
+        run: |
+          python - <<'PY'
+          import json
+          p="data/processed/timed/adb_wikidata_identity_validation.report.json"
+          r=json.load(open(p))
+          print(json.dumps(r,indent=2))
+          if r.get("api_failure_qids",1)!=0:
+              raise SystemExit(f"identity validation still has API loss: {r.get('api_failure_qids')}")
+          PY
+
+      - name: Build final verified timed core
+        run: >
+          python research/pipeline/build_timed_linked_cohort.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_identity_validation.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          data/processed/timed/timed_linked_cohort.csv.gz
+
+      - name: Build canonical births
+        run: >
+          python research/pipeline/timed_linked_to_canonical_births.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/timed_canonical_births.csv.gz
+
+      - name: Show final reports
+        run: |
+          cat data/processed/timed/adb_wikidata_identity_validation.report.json
+          cat data/processed/timed/timed_linked_cohort.report.json
+          cat data/processed/timed/timed_canonical_births.report.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: minggui-final-verified-timed-core
+          path: |
+            data/processed/timed/timed_linked_cohort.csv.gz
+            data/processed/timed/timed_linked_cohort.report.json
+            data/processed/timed/timed_canonical_births.csv.gz
+            data/processed/timed/timed_canonical_births.report.json
+            data/processed/timed/adb_wikidata_identity_validation.csv.gz
+            data/processed/timed/adb_wikidata_identity_validation.report.json
+          retention-days: 30
