@@ -1,0 +1,35 @@
+{
+  "dataset_id": "minggui-academic-enrichment-v0.2",
+  "status": "frozen-research-snapshot",
+  "created_at": "2026-10-05T06:13:45Z",
+  "workflow": {
+    "run_id": 37271073945,
+    "head_sha": "9b401d361f7d8bb57b64ecbb567923c76b0bc710",
+    "artifact_id": 11328189057,
+    "artifact_name": "minggui-academic-life-enrichment",
+    "artifact_size_bytes": 64740812,
+    "artifact_digest": "sha256:3aecae5d738cb315d1fff15af906541beda2b0463ec9cd66399ca6fc518c6d96"
+  },
+  "cohort": {
+    "selector": "occupation-targeted",
+    "eligible_rows": 273229,
+    "selected_people": 800
+  },
+  "identity": {
+    "method": "Wikidata P496 ORCID -> exact OpenAlex ORCID; no fuzzy names",
+    "people_with_wikidata_orcid": 74,
+    "openalex_exact_orcid_authors": 63
+  },
+  "events": {
+    "people_with_scholarly_events": 63,
+    "scholarly_event_rows": 12513,
+    "work_cap_per_author": 300,
+    "authors_truncated_at_cap": 23,
+    "annual_state_rows": 2743
+  },
+  "modeling_policy": [
+    "Raw scholarly works are atomic evidence/output events, not equally weighted major life events.",
+    "Use annual academic state vectors for cross-person trajectory models.",
+    "Current citation totals are audit metadata only and must not enter historical cutoff features."
+  ]
+}
