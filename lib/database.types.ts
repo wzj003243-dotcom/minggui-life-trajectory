@@ -221,6 +221,28 @@ export type Database = {
         }
         Relationships: []
       }
+      lifegraph_model_runs_v1: {
+        Row: {
+          code_commit: string | null
+          config: Json | null
+          created_at: string | null
+          dataset_key: string | null
+          dataset_version: string | null
+          environment: Json | null
+          feature_variant: string | null
+          fingerprint_sha256: string | null
+          finished_at: string | null
+          id: string | null
+          model_family: string | null
+          notes: string | null
+          random_seed: number | null
+          run_key: string | null
+          split_scenario_key: string | null
+          started_at: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
       lifegraph_observation_profiles_v1: {
         Row: {
           birth_overlap_events: number | null
@@ -284,6 +306,52 @@ export type Database = {
           dataset_version: string | null
           eligibility_flags: Json | null
           fingerprint_sha256: string | null
+          history_domain_count: number | null
+          history_event_count: number | null
+          history_life_stage_count: number | null
+          history_source_family_count: number | null
+          history_summary: Json | null
+          included_event_keys: string[] | null
+          information_cutoff: string | null
+          leakage_audit_passed: boolean | null
+          observation_end_date: string | null
+          person_hash_fold: number | null
+          person_hash_split: string | null
+          right_censored: boolean | null
+          target_age: number | null
+          target_class_4: string | null
+          target_domain_raw: string | null
+          target_event_type: string | null
+          target_observable_from: string | null
+          target_payload: Json | null
+          wikidata_id: string | null
+        }
+        Relationships: []
+      }
+      lifegraph_training_examples_v2: {
+        Row: {
+          birth_country_normalized: string | null
+          birth_country_raw: string | null
+          birth_date: string | null
+          birth_day: number | null
+          birth_geo_group: string | null
+          birth_hour: number | null
+          birth_minute: number | null
+          birth_month: number | null
+          birth_reliability: string | null
+          birth_time: string | null
+          birth_year: number | null
+          canonical_name: string | null
+          censoring_reason: string | null
+          cutoff_age: number | null
+          cutoff_date: string | null
+          cutoff_features: Json | null
+          dataset_key: string | null
+          dataset_status: string | null
+          dataset_version: string | null
+          eligibility_flags: Json | null
+          fingerprint_sha256: string | null
+          gender: string | null
           history_domain_count: number | null
           history_event_count: number | null
           history_life_stage_count: number | null
