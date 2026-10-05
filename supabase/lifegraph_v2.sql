@@ -64,6 +64,8 @@ create table if not exists research.birth_records (
   time_precision text,
   birth_place text,
   birth_country text,
+  birth_country_normalized text,
+  birth_geo_group text,
   latitude double precision,
   longitude double precision,
   source_calendar text,
@@ -198,6 +200,8 @@ create table if not exists research.feature_snapshots (
 create index if not exists people_name_idx on research.people(canonical_name);
 create index if not exists birth_records_person_idx on research.birth_records(person_id);
 create index if not exists birth_records_date_idx on research.birth_records(birth_date);
+create index if not exists birth_records_country_normalized_idx on research.birth_records(birth_country_normalized);
+create index if not exists birth_records_geo_group_idx on research.birth_records(birth_geo_group);
 create unique index if not exists birth_records_one_canonical_idx
   on research.birth_records(person_id) where is_canonical;
 create index if not exists bazi_features_person_idx on research.bazi_feature_sets(person_id);
