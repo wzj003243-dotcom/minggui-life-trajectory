@@ -1,0 +1,62 @@
+{
+  "dataset_id": "minggui-timed-core-source-marginals-v0.1",
+  "workflow_run_id": 37281306540,
+  "artifact_id": 11332022236,
+  "artifact_digest": "sha256:2ce8a3b156bd6f17e2f037d80f9a4bc6852d9a01ac12e6e9b34f55337589008d",
+  "cohort_people": 3093,
+  "base_exclusive_tiers": {
+    "thin": 2903,
+    "bronze": 190,
+    "silver": 0,
+    "gold": 0
+  },
+  "isolated_marginal": {
+    "family": {
+      "people_improved": 90,
+      "transitions": {
+        "thin->bronze": 90
+      },
+      "event_rows": 1037
+    },
+    "openalex": {
+      "people_improved": 7,
+      "transitions": {
+        "bronze->gold": 2,
+        "bronze->silver": 2,
+        "thin->bronze": 3
+      },
+      "event_rows": 1744
+    },
+    "music": {
+      "people_improved": 100,
+      "transitions": {
+        "thin->bronze": 51,
+        "bronze->gold": 13,
+        "bronze->silver": 10,
+        "thin->silver": 26
+      },
+      "event_rows": 5527
+    },
+    "founding": {
+      "people_improved": 32,
+      "transitions": {
+        "thin->bronze": 32
+      },
+      "event_rows": 423
+    },
+    "notable": {
+      "people_improved": 39,
+      "transitions": {
+        "thin->bronze": 39
+      },
+      "event_rows": 1163
+    }
+  },
+  "cumulative_final_exclusive_tiers": {
+    "thin": 2704,
+    "bronze": 318,
+    "silver": 45,
+    "gold": 26
+  },
+  "note": "Exclusive tiers sum to the cohort. Aggregate summary uses cumulative 'or better' counts: Bronze-or-better=389, Silver-or-better=71, Gold=26."
+}
