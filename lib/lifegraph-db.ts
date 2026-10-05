@@ -16,6 +16,12 @@ export type LifeGraphObservationProfile =
   Database["public"]["Views"]["lifegraph_observation_profiles_v1"]["Row"];
 export type LifeGraphModelEligibility =
   Database["public"]["Views"]["lifegraph_model_eligibility_v1"]["Row"];
+export type LifeGraphTrainingExample =
+  Database["public"]["Views"]["lifegraph_training_examples_v1"]["Row"];
+export type LifeGraphTrainingSplit =
+  Database["public"]["Views"]["lifegraph_training_splits_v1"]["Row"];
+export type LifeGraphTrainingReadiness =
+  Database["public"]["Views"]["lifegraph_training_readiness_v1"]["Row"];
 
 function getConfig() {
   const url =
@@ -126,4 +132,52 @@ export async function getLifeGraphModelEligibility(wikidataId: string) {
     `lifegraph_model_eligibility_v1?select=*&wikidata_id=${eq(wikidataId)}&limit=1`,
   );
   return rows?.[0] ?? null;
+}
+
+
+export async function getLifeGraphTrainingReadiness(datasetVersion?: string) {
+  const version = datasetVersion ? `&version=${eq(datasetVersion)}` : "";
+  return (
+    (await supabaseRest<LifeGraphTrainingReadiness[]>(
+      `lifegraph_training_readiness_v1?select=*${version}&order=version.desc`,
+    )) ?? []
+  );
+}
+
+export async function getLifeGraphTrainingExamples(
+  datasetVersion: string,
+  options: {
+    split?: string;
+    classificationEligibleOnly?: boolean;
+    limit?: number;
+  } = {},
+) {
+  const limit = Math.min(Math.max(options.limit ?? 1000, 1), 5000);
+  const split = options.split ? `&person_hash_split=${eq(options.split)}` : "";
+  const rows =
+    (await supabaseRest<LifeGraphTrainingExample[]>(
+      `lifegraph_training_examples_v1?select=*&dataset_version=${eq(datasetVersion)}${split}&order=wikidata_id.asc,cutoff_age.asc&limit=${limit}`,
+    )) ?? [];
+
+  if (!options.classificationEligibleOnly) return rows;
+  return rows.filter((row) => {
+    const flags = row.eligibility_flags;
+    return (
+      flags &&
+      typeof flags === "object" &&
+      !Array.isArray(flags) &&
+      flags.classification_eligible === true
+    );
+  });
+}
+
+export async function getLifeGraphTrainingSplits(
+  datasetVersion: string,
+  scenarioKey: string,
+) {
+  return (
+    (await supabaseRest<LifeGraphTrainingSplit[]>(
+      `lifegraph_training_splits_v1?select=*&dataset_version=${eq(datasetVersion)}&scenario_key=${eq(scenarioKey)}&order=wikidata_id.asc`,
+    )) ?? []
+  );
 }
