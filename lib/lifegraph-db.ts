@@ -18,6 +18,10 @@ export type LifeGraphModelEligibility =
   Database["public"]["Views"]["lifegraph_model_eligibility_v1"]["Row"];
 export type LifeGraphTrainingExample =
   Database["public"]["Views"]["lifegraph_training_examples_v1"]["Row"];
+export type LifeGraphTrainingExampleV2 =
+  Database["public"]["Views"]["lifegraph_training_examples_v2"]["Row"];
+export type LifeGraphModelRun =
+  Database["public"]["Views"]["lifegraph_model_runs_v1"]["Row"];
 export type LifeGraphTrainingSplit =
   Database["public"]["Views"]["lifegraph_training_splits_v1"]["Row"];
 export type LifeGraphTrainingReadiness =
@@ -178,6 +182,29 @@ export async function getLifeGraphTrainingSplits(
   return (
     (await supabaseRest<LifeGraphTrainingSplit[]>(
       `lifegraph_training_splits_v1?select=*&dataset_version=${eq(datasetVersion)}&scenario_key=${eq(scenarioKey)}&order=wikidata_id.asc`,
+    )) ?? []
+  );
+}
+
+
+export async function getLifeGraphTrainingExamplesV2(
+  datasetVersion: string,
+  options: { split?: string; limit?: number } = {},
+) {
+  const limit = Math.min(Math.max(options.limit ?? 1000, 1), 5000);
+  const split = options.split ? `&person_hash_split=${eq(options.split)}` : "";
+  return (
+    (await supabaseRest<LifeGraphTrainingExampleV2[]>(
+      `lifegraph_training_examples_v2?select=*&dataset_version=${eq(datasetVersion)}${split}&order=wikidata_id.asc,cutoff_age.asc&limit=${limit}`,
+    )) ?? []
+  );
+}
+
+export async function getLifeGraphModelRuns(datasetVersion?: string) {
+  const version = datasetVersion ? `&dataset_version=${eq(datasetVersion)}` : "";
+  return (
+    (await supabaseRest<LifeGraphModelRun[]>(
+      `lifegraph_model_runs_v1?select=*${version}&order=created_at.desc`,
     )) ?? []
   );
 }
