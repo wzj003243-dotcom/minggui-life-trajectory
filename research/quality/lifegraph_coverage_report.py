@@ -41,6 +41,8 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("output")
     ap.add_argument("inputs",nargs="+")
+    ap.add_argument("--cohort",default="",help="optional CSV[.gz] cohort used as denominator, including zero-event people")
+    ap.add_argument("--cohort-id-column",default="wikidata_id")
     ap.add_argument("--min-events",type=int,default=15)
     ap.add_argument("--min-domains",type=int,default=4)
     ap.add_argument("--min-stages",type=int,default=3)
@@ -48,6 +50,12 @@ def main():
     args=ap.parse_args()
 
     people=defaultdict(lambda:{"events":0,"domains":Counter(),"stages":Counter(),"sources":Counter(),"types":Counter()})
+    if args.cohort:
+        with open_csv(args.cohort) as cf:
+            for row in csv.DictReader(cf):
+                pid=(row.get(args.cohort_id_column) or row.get("person_id") or row.get("wikidata_code") or "").strip()
+                if pid:
+                    _=people[pid]
     total=0
     for raw in args.inputs:
         with open_csv(raw) as f:
@@ -81,6 +89,7 @@ def main():
         return counts[min(len(counts)-1,round((len(counts)-1)*frac))]
     report={
       "people":len(rows),"event_rows":total,
+      "denominator":"explicit cohort including zero-event people" if args.cohort else "people observed in event inputs",
       "event_count":{"median":statistics.median(counts) if counts else 0,"p25":q(.25),"p75":q(.75),"p90":q(.90)},
       "model_ready_thick_people":ready,
       "model_ready_thick_share":(ready/len(rows) if rows else 0),
