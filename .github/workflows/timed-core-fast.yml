@@ -75,14 +75,6 @@ jobs:
           --property P10283
           --id-column wikidata_id
 
-      - name: Build MusicBrainz bridge
-        run: >
-          python research/acquire/fetch_wikidata_external_ids.py
-          data/processed/timed/timed_linked_cohort.csv.gz
-          data/processed/timed/musicbrainz_bridge.csv.gz
-          --property P434
-          --id-column wikidata_id
-
       - name: Enrich OpenAlex through ORCID
         run: >
           python research/acquire/fetch_openalex_academic_events.py
@@ -103,15 +95,6 @@ jobs:
           --limit 0
           --max-works-per-author 200
 
-      - name: Enrich MusicBrainz timelines
-        run: >
-          python research/acquire/fetch_musicbrainz_events.py
-          data/processed/timed/timed_linked_cohort.csv.gz
-          data/processed/timed/musicbrainz
-          --id-column wikidata_id
-          --limit 0
-          --mbid-map data/processed/timed/musicbrainz_bridge.csv.gz
-
       - name: Normalize scholarly events
         run: >
           python research/pipeline/external_events_to_lifegraph.py
@@ -120,20 +103,12 @@ jobs:
           data/processed/timed/openalex_orcid/academic_events.csv.gz
           data/processed/timed/openalex_direct/academic_events_p10283.csv.gz
 
-      - name: Normalize music events
-        run: >
-          python research/pipeline/external_events_to_lifegraph.py
-          data/processed/timed/timed_canonical_births.csv.gz
-          data/processed/timed/life_events_musicbrainz.csv.gz
-          data/processed/timed/musicbrainz/music_events.csv.gz
-
       - name: Canonicalize cross-source events
         run: >
           python research/pipeline/canonicalize_lifegraph_events.py
           data/processed/timed/life_events_canonical.csv.gz
           data/processed/timed/life_events_wikidata.csv.gz
           data/processed/timed/life_events_openalex.csv.gz
-          data/processed/timed/life_events_musicbrainz.csv.gz
 
       - name: Measure core LifeGraph thickness
         run: >
@@ -150,7 +125,6 @@ jobs:
           data/processed/timed/core_year_states.csv.gz
           --additional-events
           data/processed/timed/life_events_openalex.csv.gz
-          data/processed/timed/life_events_musicbrainz.csv.gz
 
       - name: Show reports
         if: always()
