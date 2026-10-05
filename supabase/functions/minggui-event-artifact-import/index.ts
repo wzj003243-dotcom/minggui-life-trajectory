@@ -42,6 +42,32 @@ function ageYears(birth,d){
   if(!Number.isFinite(a)||!Number.isFinite(b))return null;
   return Math.round(((b-a)/86400000/365.2425)*10000)/10000;
 }
+
+async function archiveArtifactToStorage(bytes,artifactId,sha256){
+  const url=Deno.env.get("SUPABASE_URL");
+  const legacy=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const secretJson=Deno.env.get("SUPABASE_SECRET_KEYS");
+  let secret=legacy;
+  if(secretJson){
+    try{ secret=JSON.parse(secretJson)?.default||secret; }catch{}
+  }
+  if(!url||!secret) throw new Error("missing Supabase server-side storage credentials");
+  const path=`github-actions/${artifactId}-${sha256}.zip`;
+  const res=await fetch(`${url}/storage/v1/object/research-artifacts/${path}`,{
+    method:"POST",
+    headers:{
+      "Authorization":`Bearer ${secret}`,
+      "apikey":secret,
+      "Content-Type":"application/zip",
+      "x-upsert":"true"
+    },
+    body:bytes
+  });
+  const text=await res.text();
+  if(!res.ok) throw new Error(`artifact archive failed ${res.status}: ${text}`);
+  return path;
+}
+
 async function execBatches(sql,query,rows,size=400){
   let done=0;
   for(const batch of chunks(rows,size)){
@@ -64,6 +90,7 @@ Deno.serve(async(req)=>{
       await sql.end({timeout:2});
       return Response.json({ok:false,error:"sha mismatch",actual},{status:400});
     }
+    const storagePath=await archiveArtifactToStorage(body,ARTIFACT_ID,actual);
     const zip=await JSZip.loadAsync(body);
     const raw=await findCsv(zip,"music_events.csv.gz");
     if(raw.length!==11476) throw new Error("unexpected music row count "+raw.length);
@@ -152,13 +179,27 @@ Deno.serve(async(req)=>{
         [SNAPSHOT_ID,ARTIFACT_ID,"sha256:"+EXPECTED_SHA]);
     });
 
+    await sql.unsafe(
+      "insert into research.artifact_registry(artifact_key,provider,provider_artifact_id,artifact_name,artifact_kind,sha256,source_workflow_run_id,storage_bucket,storage_path,status,metadata,archived_at,imported_at) "+
+      "values($1,'github-actions',$2,$3,'musicbrainz-enrichment',$4,$5,'research-artifacts',$6,'imported',$7::jsonb,now(),now()) "+
+      "on conflict(artifact_key) do update set storage_bucket=excluded.storage_bucket,storage_path=excluded.storage_path,status='imported',archived_at=coalesce(research.artifact_registry.archived_at,now()),imported_at=now(),metadata=research.artifact_registry.metadata||excluded.metadata",
+      [
+        "github-actions:"+ARTIFACT_ID+":"+actual,
+        ARTIFACT_ID,
+        "minggui-timed-core-musicbrainz-complete",
+        actual,
+        "37302608630",
+        storagePath,
+        JSON.stringify({input_rows:raw.length,accepted_events:events.length,invalid_dates:invalidDates})
+      ]
+    );
     const counts=await sql.unsafe(
       "select (select count(*)::int from research.life_events where source_family='musicbrainz') music_events,"+
       "(select count(*)::int from research.dataset_event_membership where dataset_snapshot_id=$1::uuid) snapshot_events,"+
       "(select count(distinct e.person_id)::int from research.dataset_event_membership dem join research.life_events e on e.id=dem.event_id where dem.dataset_snapshot_id=$1::uuid) snapshot_people_with_events",
       [SNAPSHOT_ID]);
     await sql.end({timeout:5});
-    return Response.json({ok:true,sha256:actual,input_rows:raw.length,accepted_events:events.length,missing_people:missingPeople,invalid_dates:invalidDates,counts:counts[0]});
+    return Response.json({ok:true,sha256:actual,storage_path:storagePath,input_rows:raw.length,accepted_events:events.length,missing_people:missingPeople,invalid_dates:invalidDates,counts:counts[0]});
   }catch(e){
     try{await sql.end({timeout:2})}catch{}
     return Response.json({ok:false,error:String(e?.stack||e)},{status:500});
