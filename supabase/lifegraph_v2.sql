@@ -22,6 +22,10 @@ create table if not exists research.dataset_snapshots (
   source_git_sha text,
   person_count integer,
   event_count bigint,
+  observation_cutoff_date date,
+  frozen_at timestamptz,
+  person_membership_sha256 text,
+  event_membership_sha256 text,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   unique(dataset_key, version)
@@ -535,6 +539,146 @@ grant select on public.lifegraph_model_eligibility_v1 to service_role;
 grant select on research.person_observation_profile_v1 to service_role;
 grant select on research.person_model_eligibility_v1 to service_role;
 
+
+
+-- Freeze gate: a snapshot is training-safe only after person/event membership and
+-- the observation window are fixed and fingerprinted.
+create or replace function research.freeze_dataset_snapshot_v1(
+  p_snapshot_id uuid,
+  p_observation_cutoff_date date
+)
+returns table(
+  snapshot_id uuid,
+  frozen_person_count integer,
+  frozen_event_count bigint,
+  person_sha256 text,
+  event_sha256 text,
+  frozen_timestamp timestamptz
+)
+language plpgsql
+security invoker
+set search_path=pg_catalog,research,extensions
+as $
+declare
+  v_dataset_key text;
+  v_person_count integer;
+  v_event_count bigint;
+  v_bazi_count integer;
+  v_orphan_events bigint;
+  v_future_events bigint;
+  v_person_sha text;
+  v_event_sha text;
+  v_frozen_at timestamptz := clock_timestamp();
+begin
+  if p_observation_cutoff_date is null then
+    raise exception 'observation cutoff date is required';
+  end if;
+
+  select ds.dataset_key into v_dataset_key
+  from research.dataset_snapshots ds
+  where ds.id=p_snapshot_id;
+
+  if v_dataset_key is null then
+    raise exception 'dataset snapshot % not found',p_snapshot_id;
+  end if;
+
+  select count(*)::int into v_person_count
+  from research.dataset_membership dm
+  where dm.dataset_snapshot_id=p_snapshot_id;
+
+  if v_person_count=0 then
+    raise exception 'cannot freeze empty person membership';
+  end if;
+
+  select count(*)::bigint into v_event_count
+  from research.dataset_event_membership dem
+  where dem.dataset_snapshot_id=p_snapshot_id;
+
+  select count(*)::bigint into v_orphan_events
+  from research.dataset_event_membership dem
+  join research.life_events e on e.id=dem.event_id
+  left join research.dataset_membership dm
+    on dm.dataset_snapshot_id=dem.dataset_snapshot_id
+   and dm.person_id=e.person_id
+  where dem.dataset_snapshot_id=p_snapshot_id
+    and dm.person_id is null;
+
+  if v_orphan_events<>0 then
+    raise exception 'snapshot has % event memberships for people outside the person cohort',v_orphan_events;
+  end if;
+
+  select count(*)::bigint into v_future_events
+  from research.dataset_event_membership dem
+  join research.life_events e on e.id=dem.event_id
+  where dem.dataset_snapshot_id=p_snapshot_id
+    and e.model_eligible
+    and e.observable_from is not null
+    and e.observable_from>p_observation_cutoff_date;
+
+  if v_future_events<>0 then
+    raise exception 'snapshot has % model-eligible events observable after cutoff %',v_future_events,p_observation_cutoff_date;
+  end if;
+
+  if v_dataset_key='timed-core' then
+    select count(distinct bf.person_id)::int into v_bazi_count
+    from research.bazi_feature_sets bf
+    where bf.source_snapshot_id=p_snapshot_id
+      and bf.mode='timed';
+
+    if v_bazi_count<>v_person_count then
+      raise exception 'timed-core BaZi coverage mismatch: people %, feature people %',v_person_count,v_bazi_count;
+    end if;
+  end if;
+
+  select encode(extensions.digest(coalesce(string_agg(
+      coalesce(p.wikidata_id,p.id::text)||E'\\x1f'||dm.cohort_role||E'\\x1f'||dm.metadata::text,
+      E'\\x1e' order by coalesce(p.wikidata_id,p.id::text)
+    ),''),'sha256'),'hex')
+  into v_person_sha
+  from research.dataset_membership dm
+  join research.people p on p.id=dm.person_id
+  where dm.dataset_snapshot_id=p_snapshot_id;
+
+  select encode(extensions.digest(coalesce(string_agg(
+      e.event_key||E'\\x1f'||
+      coalesce(p.wikidata_id,p.id::text)||E'\\x1f'||
+      e.domain||E'\\x1f'||e.event_type||E'\\x1f'||
+      coalesce(e.event_date_min::text,'')||E'\\x1f'||
+      coalesce(e.event_date_max::text,'')||E'\\x1f'||
+      coalesce(e.observable_from::text,'')||E'\\x1f'||
+      e.source_family||E'\\x1f'||
+      e.model_eligible::text||E'\\x1f'||
+      e.attributes::text||E'\\x1f'||e.quality_flags::text||E'\\x1f'||
+      dem.inclusion_role||E'\\x1f'||dem.metadata::text,
+      E'\\x1e' order by e.event_key
+    ),''),'sha256'),'hex')
+  into v_event_sha
+  from research.dataset_event_membership dem
+  join research.life_events e on e.id=dem.event_id
+  join research.people p on p.id=e.person_id
+  where dem.dataset_snapshot_id=p_snapshot_id;
+
+  update research.dataset_snapshots
+  set person_count=v_person_count,
+      event_count=v_event_count,
+      observation_cutoff_date=p_observation_cutoff_date,
+      frozen_at=v_frozen_at,
+      person_membership_sha256=v_person_sha,
+      event_membership_sha256=v_event_sha,
+      status='frozen',
+      metadata=metadata||jsonb_build_object(
+        'freeze_spec_version','snapshot-freeze-v1',
+        'frozen_person_count',v_person_count,
+        'frozen_event_count',v_event_count
+      )
+  where id=p_snapshot_id;
+
+  return query
+  select p_snapshot_id,v_person_count,v_event_count,v_person_sha,v_event_sha,v_frozen_at;
+end $;
+
+revoke all on function research.freeze_dataset_snapshot_v1(uuid,date) from public,anon,authenticated;
+grant execute on function research.freeze_dataset_snapshot_v1(uuid,date) to service_role;
 
 -- Reproducibility: feature/state versions from different source snapshots must coexist.
 alter table research.bazi_feature_sets
