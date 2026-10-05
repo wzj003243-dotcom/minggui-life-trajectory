@@ -147,7 +147,7 @@ def main():
       "content_chars_total":sum(r["content_chars"] for r in records),
       "raw_text_license":"CC BY-SA","content_mode":"revision main-slot wikitext"
     }
-    report_path=out.with_name(out.name[:-10]+".report.json" if out.name.endswith(".jsonl.gz") else out.stem+".report.json")
+    report_path=Path(str(out)[:-9]+".report.json") if str(out).endswith(".jsonl.gz") else out.with_name(out.stem+".report.json")
     report_path.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
     print(json.dumps(report,ensure_ascii=False,indent=2))
 if __name__=="__main__":main()
