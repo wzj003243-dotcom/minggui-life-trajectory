@@ -11,6 +11,7 @@ API="https://www.wikidata.org/w/api.php"
 UA="MingGuiLifeTrajectory/0.1 (public research; github.com/wzj003243-dotcom/minggui-life-trajectory)"
 PROPS={
  "P69":"education.affiliation",
+ "P512":"education.degree",
  "P108":"career.employer",
  "P39":"career.position",
  "P106":"career.occupation",
