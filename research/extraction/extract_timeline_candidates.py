@@ -8,7 +8,7 @@ import argparse,csv,gzip,json,re
 import mwparserfromhell
 from pathlib import Path
 
-YEAR=re.compile(r"\b(?:18|19|20)\d{2}\b")
+YEAR=re.compile(r"\b(?:1[0-9]{3}|20\d{2})\b")
 AGE_EN=re.compile(r"\b(?:aged?|age)\s+(\d{1,2})\b",re.I)
 AGE_ZH=re.compile(r"(\d{1,2})\s*岁")
 SENTENCE=re.compile(r"(?<=[.!?。！？])\s+|\n+")
@@ -31,14 +31,37 @@ def classify(s):
 
 def clean(s):return re.sub(r"\s+"," ",s).strip()
 
+SKIP_SECTION_TITLES={
+    "references","reference","notes","sources","bibliography","further reading",
+    "external links","works cited","citations","see also",
+    "参考文献","參考文獻","注释","註釋","资料来源","資料來源","外部链接","外部連結"
+}
+
 def wikitext_to_plain(raw):
     code=mwparserfromhell.parse(raw or "")
-    # Narrative extraction should not treat infobox/template markup as prose.
+    # Remove templates and citation/reference tags before prose extraction.
     for node in list(code.filter_templates(recursive=True)):
         try:
             code.remove(node,recursive=True)
         except Exception:
             pass
+    for tag in list(code.filter_tags(recursive=True)):
+        name=str(getattr(tag,"tag","")).strip().lower()
+        if name in {"ref","references","gallery","math","timeline"}:
+            try:
+                code.remove(tag,recursive=True)
+            except Exception:
+                pass
+
+    # Drop non-narrative tail sections that are rich in dates but not life events.
+    text=str(code)
+    cut=len(text)
+    for heading in code.filter_headings(recursive=True):
+        title=clean(str(heading.title)).lower()
+        if title in SKIP_SECTION_TITLES:
+            pos=text.find(str(heading))
+            if pos>=0: cut=min(cut,pos)
+    code=mwparserfromhell.parse(text[:cut])
     return code.strip_code(normalize=True,collapse=True) or ""
 
 def main():
