@@ -407,3 +407,92 @@ grant select on public.lifegraph_events_v1 to service_role;
 grant select on public.lifegraph_model_inputs_v1 to service_role;
 grant select on public.lifegraph_year_states_v1 to service_role;
 grant select on public.lifegraph_dataset_status_v1 to service_role;
+
+
+-- Observation context: sparsity describes documentation, never person quality.
+create or replace view research.person_observation_profile_v1
+with (security_invoker=true) as
+select
+  p.id as person_id,
+  p.wikidata_id,
+  p.canonical_name,
+  count(e.id)::int as raw_event_count,
+  count(e.id) filter(where e.model_eligible)::int as trajectory_event_count,
+  count(distinct e.domain) filter(where e.model_eligible)::int as domain_count,
+  count(distinct e.source_family)::int as source_family_count,
+  min(e.event_date_min) as first_recorded_event_date,
+  max(e.event_date_max) as last_recorded_event_date,
+  min(e.age_mid) filter(where e.model_eligible) as first_trajectory_event_age,
+  max(e.age_mid) filter(where e.model_eligible) as last_trajectory_event_age,
+  count(*) filter(where e.temporal_precision='day')::int as day_precision_events,
+  count(*) filter(where e.temporal_precision='month')::int as month_precision_events,
+  count(*) filter(where e.temporal_precision='year')::int as year_precision_events,
+  count(*) filter(where e.confidence is not null and e.confidence>=0.9)::int as high_confidence_events,
+  count(*) filter(where e.quality_flags ? 'posthumous')::int as posthumous_events,
+  count(*) filter(where e.quality_flags ? 'prebirth_interval')::int as prebirth_interval_events,
+  count(*) filter(where e.quality_flags ? 'birth_interval_overlap')::int as birth_overlap_events,
+  count(distinct case
+    when e.model_eligible and e.age_mid>=0 and e.age_mid<18 then '0-17'
+    when e.model_eligible and e.age_mid>=18 and e.age_mid<25 then '18-24'
+    when e.model_eligible and e.age_mid>=25 and e.age_mid<35 then '25-34'
+    when e.model_eligible and e.age_mid>=35 and e.age_mid<50 then '35-49'
+    when e.model_eligible and e.age_mid>=50 and e.age_mid<65 then '50-64'
+    when e.model_eligible and e.age_mid>=65 then '65+'
+  end)::int as observed_life_stage_count,
+  case
+    when count(e.id)=0 then 'none'
+    when count(e.id) between 1 and 4 then 'sparse'
+    when count(e.id) between 5 and 14 then 'light'
+    when count(e.id) between 15 and 39 then 'moderate'
+    else 'dense'
+  end as documentation_density,
+  (count(distinct e.source_family)>=2) as multi_source,
+  (count(distinct e.domain) filter(where e.model_eligible)>=4) as multi_domain,
+  (
+    count(distinct case
+      when e.model_eligible and e.age_mid>=0 and e.age_mid<18 then '0-17'
+      when e.model_eligible and e.age_mid>=18 and e.age_mid<25 then '18-24'
+      when e.model_eligible and e.age_mid>=25 and e.age_mid<35 then '25-34'
+      when e.model_eligible and e.age_mid>=35 and e.age_mid<50 then '35-49'
+      when e.model_eligible and e.age_mid>=50 and e.age_mid<65 then '50-64'
+      when e.model_eligible and e.age_mid>=65 then '65+'
+    end)>=3
+  ) as multi_stage,
+  jsonb_build_object(
+    'wikidata',count(*) filter(where e.source_family='wikidata'),
+    'openalex',count(*) filter(where e.source_family='openalex'),
+    'musicbrainz',count(*) filter(where e.source_family='musicbrainz'),
+    'wikipedia',count(*) filter(where e.source_family='wikipedia')
+  ) as source_event_counts
+from research.people p
+left join research.life_events e on e.person_id=p.id
+group by p.id,p.wikidata_id,p.canonical_name;
+
+create or replace view research.person_model_eligibility_v1
+with (security_invoker=true) as
+select
+  o.person_id,o.wikidata_id,o.canonical_name,
+  (o.trajectory_event_count>=1) as any_trajectory_task,
+  (o.trajectory_event_count>=2 and o.observed_life_stage_count>=2) as next_event_task,
+  (o.trajectory_event_count>=3 and o.observed_life_stage_count>=2) as sequence_task,
+  (o.trajectory_event_count>=5 and o.observed_life_stage_count>=2) as hazard_task,
+  (o.source_family_count>=2) as multisource_validation_task,
+  (o.raw_event_count>=15 and o.domain_count>=4 and o.observed_life_stage_count>=3 and o.source_family_count>=2) as strict_dense_benchmark,
+  o.documentation_density,o.raw_event_count,o.trajectory_event_count,o.domain_count,
+  o.source_family_count,o.observed_life_stage_count
+from research.person_observation_profile_v1 o;
+
+create or replace view public.lifegraph_observation_profiles_v1
+with (security_invoker=true) as
+select * from research.person_observation_profile_v1;
+
+create or replace view public.lifegraph_model_eligibility_v1
+with (security_invoker=true) as
+select * from research.person_model_eligibility_v1;
+
+revoke all on public.lifegraph_observation_profiles_v1 from public,anon,authenticated;
+revoke all on public.lifegraph_model_eligibility_v1 from public,anon,authenticated;
+grant select on public.lifegraph_observation_profiles_v1 to service_role;
+grant select on public.lifegraph_model_eligibility_v1 to service_role;
+grant select on research.person_observation_profile_v1 to service_role;
+grant select on research.person_model_eligibility_v1 to service_role;
