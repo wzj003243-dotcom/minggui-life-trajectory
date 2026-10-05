@@ -87,8 +87,7 @@ create table if not exists research.bazi_feature_sets (
   objective_features jsonb not null default '{}'::jsonb,
   quality_flags jsonb not null default '{}'::jsonb,
   source_snapshot_id uuid references research.dataset_snapshots(id) on delete set null,
-  created_at timestamptz not null default now(),
-  unique(person_id, feature_version, mode)
+  created_at timestamptz not null default now()
 );
 
 create table if not exists research.external_identities (
@@ -360,7 +359,14 @@ select
   t.event_count,t.domain_count,t.source_family_count,t.life_stage_count,t.model_ready_thick
 from research.people p
 left join research.birth_records b on b.person_id=p.id and b.is_canonical
-left join research.bazi_feature_sets bf on bf.person_id=p.id and bf.mode='timed'
+left join lateral (
+  select bf0.*
+  from research.bazi_feature_sets bf0
+  left join research.dataset_snapshots ds on ds.id=bf0.source_snapshot_id
+  where bf0.person_id=p.id and bf0.mode='timed'
+  order by ds.created_at desc nulls last,bf0.created_at desc,bf0.id desc
+  limit 1
+) bf on true
 left join research.person_thickness_v1 t on t.person_id=p.id;
 
 create or replace view public.lifegraph_events_v1
@@ -380,7 +386,14 @@ select
   bf.feature_version,bf.four_pillars,bf.objective_features,bf.quality_flags
 from research.people p
 join research.birth_records b on b.person_id=p.id and b.is_canonical
-join research.bazi_feature_sets bf on bf.person_id=p.id and bf.mode='timed';
+join lateral (
+  select bf0.*
+  from research.bazi_feature_sets bf0
+  left join research.dataset_snapshots ds on ds.id=bf0.source_snapshot_id
+  where bf0.person_id=p.id and bf0.mode='timed'
+  order by ds.created_at desc nulls last,bf0.created_at desc,bf0.id desc
+  limit 1
+) bf on true;
 
 create or replace view public.lifegraph_year_states_v1
 with (security_invoker=true) as
@@ -503,6 +516,12 @@ grant select on research.person_model_eligibility_v1 to service_role;
 
 
 -- Reproducibility: feature/state versions from different source snapshots must coexist.
+alter table research.bazi_feature_sets
+  drop constraint if exists bazi_feature_sets_person_id_feature_version_mode_key;
+create unique index if not exists bazi_feature_sets_versioned_uidx
+  on research.bazi_feature_sets(person_id,feature_version,mode,source_snapshot_id)
+  nulls not distinct;
+
 alter table research.feature_snapshots
   drop constraint if exists feature_snapshots_person_id_information_cutoff_feature_spec_key;
 alter table research.feature_snapshots
