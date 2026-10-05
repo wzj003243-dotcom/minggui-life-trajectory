@@ -1,0 +1,59 @@
+name: Import final structured enrichments
+
+on:
+  push:
+    branches:
+      - "data-run-final-structured-import*"
+    paths:
+      - "research/acquire/TRIGGER_FINAL_STRUCTURED_IMPORT.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  import:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: family-degree
+            artifact_id: "11330336326"
+            sha256: "2557ed46d67642b006b6f94de4522cd20504f58c3d5559d40adbddc63d3d7f79"
+          - label: founding
+            artifact_id: "11329995687"
+            sha256: "899477b5cadb53c5f2def382683a2b3ef8f566809f981a9f8777eced61318103"
+          - label: notable-work
+            artifact_id: "11329902983"
+            sha256: "8e555e92b826a2b778dff2fad73cc1bbf64661dcc02089743ef10464681f39a0"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download frozen ${{ matrix.label }} artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/${{ matrix.artifact_id }}/zip" \
+            -o artifact.zip
+          echo "${{ matrix.sha256 }}  artifact.zip" | sha256sum -c -
+      - name: Archive and import ${{ matrix.label }}
+        run: |
+          curl -L --fail-with-body \
+            --max-time 900 \
+            -X POST \
+            -H "Content-Type: application/zip" \
+            --data-binary @artifact.zip \
+            "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-structured-artifact-import" \
+            | tee import-result.json
+          python - <<'PY'
+          import json
+          p=json.load(open("import-result.json"))
+          if not p.get("ok"):
+              raise SystemExit(p)
+          print(json.dumps(p,indent=2))
+          PY
