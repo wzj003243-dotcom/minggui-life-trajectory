@@ -21,7 +21,7 @@ def main():
     rng=random.Random(args.seed)
     buckets=defaultdict(list)
     for row in rows:
-        pid=(row.get(args.id_column) or "").strip()
+        pid=(row.get(args.id_column) or row.get("wikidata_id") or row.get("wikidata_code") or "").strip()
         if not pid:continue
         key=tuple((row.get(d) or "unknown").strip() or "unknown" for d in dims)
         buckets[key].append(row)
