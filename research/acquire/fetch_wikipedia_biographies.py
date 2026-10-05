@@ -69,9 +69,14 @@ def revision_content(rev):
     main=slots.get("main") or {}
     return main.get("content") or rev.get("content") or rev.get("*") or ""
 
-def fetch_site(site,pairs,batch_size=1):
-    """pairs: [(qid,title)] -> revision-pinned records"""
-    api=HOST[site];out=[];failed=0
+def fetch_site(site,pairs,batch_size=1,stats=None):
+    """Yield revision-pinned records one page at a time.
+
+    Streaming is intentional: callers can persist each page immediately so a late timeout
+    does not erase already fetched biography content.
+    """
+    stats=stats if stats is not None else {"failed":0}
+    api=HOST[site]
     for i in range(0,len(pairs),batch_size):
         batch=pairs[i:i+batch_size]
         title_to_q={title:q for q,title in batch}
@@ -87,7 +92,7 @@ def fetch_site(site,pairs,batch_size=1):
             })
         except Exception as e:
             print(f"warning: biography batch failed site={site} i={i}: {e!r}",flush=True)
-            failed+=len(batch)
+            stats["failed"]=stats.get("failed",0)+len(batch)
             continue
         normalized={x["from"]:x["to"] for x in data.get("query",{}).get("normalized",[])}
         redirects={x["from"]:x["to"] for x in data.get("query",{}).get("redirects",[])}
@@ -96,6 +101,7 @@ def fetch_site(site,pairs,batch_size=1):
                 x=normalized.get(original,original);x=redirects.get(x,x)
                 if x==title:return q
             return title_to_q.get(title)
+        emitted=0
         for page in data.get("query",{}).get("pages",[]):
             if page.get("missing"):continue
             q=source_q(page.get("title"))
@@ -103,18 +109,18 @@ def fetch_site(site,pairs,batch_size=1):
             rev=(page.get("revisions") or [{}])[0]
             raw=revision_content(rev)
             if not raw.strip():continue
-            out.append({
+            emitted+=1
+            yield {
               "person_id":q,"site":site,"language":"en" if site=="enwiki" else "zh",
               "title":page.get("title"),"pageid":page.get("pageid"),
               "revision_id":rev.get("revid"),"revision_parent_id":rev.get("parentid"),
               "revision_timestamp":rev.get("timestamp"),"revision_sha1":rev.get("sha1"),
               "wikitext":raw,"content_chars":len(raw),
               "license":"CC BY-SA","source_url":f"https://{site[:-4]}.wikipedia.org/?curid={page.get('pageid')}&oldid={rev.get('revid')}"
-            })
+            }
         if (i//batch_size+1)%20==0:
-            print(f"{site}: fetched={min(i+batch_size,len(pairs))}/{len(pairs)} records={len(out)}",flush=True)
+            print(f"{site}: fetched={min(i+batch_size,len(pairs))}/{len(pairs)} emitted_last_batch={emitted}",flush=True)
         time.sleep(.25)
-    return out,failed
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("cohort");ap.add_argument("output")
@@ -133,19 +139,22 @@ def main():
         links=resolve_sitelinks(qids)
     by_site=defaultdict(list)
     for q,(site,title) in links.items():by_site[site].append((q,title))
-    records=[];failed=0
-    for site,pairs in by_site.items():
-        got,bad=fetch_site(site,sorted(pairs))
-        records.extend(got);failed+=bad
     out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
+    stats={"failed":0};records_count=0;content_chars_total=0
     with gzip.open(out,"wt",encoding="utf-8") as w:
-        for r in records:w.write(json.dumps(r,ensure_ascii=False)+"\n")
+        for site,pairs in by_site.items():
+            for r in fetch_site(site,sorted(pairs),stats=stats):
+                w.write(json.dumps(r,ensure_ascii=False)+"\n")
+                w.flush()
+                records_count+=1
+                content_chars_total+=r["content_chars"]
     report={
       "requested_people":len(qids),"resolved_sitelinks":len(links),
-      "biographies_fetched":len(records),"failed_fetch_qids":failed,
+      "biographies_fetched":records_count,"failed_fetch_qids":stats["failed"],
       "site_counts":{s:len(v) for s,v in by_site.items()},
-      "content_chars_total":sum(r["content_chars"] for r in records),
-      "raw_text_license":"CC BY-SA","content_mode":"revision main-slot wikitext"
+      "content_chars_total":content_chars_total,
+      "raw_text_license":"CC BY-SA","content_mode":"revision main-slot wikitext",
+      "write_mode":"streaming-page-by-page"
     }
     report_path=Path(str(out)[:-9]+".report.json") if str(out).endswith(".jsonl.gz") else out.with_name(out.stem+".report.json")
     report_path.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
