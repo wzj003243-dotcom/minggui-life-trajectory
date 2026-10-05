@@ -17,10 +17,13 @@ KEYWORDS={
  "education":[r"universit",r"college",r"school",r"graduat",r"enroll",r"studied",r"degree",r"学院",r"大学",r"毕业",r"入学",r"就读"],
  "career":[r"appointed",r"joined",r"worked",r"career",r"became",r"promot",r"retir",r"resign",r"任职",r"加入",r"工作",r"升任",r"辞职",r"退休"],
  "migration":[r"moved",r"emigrat",r"immigrat",r"relocat",r"returned to",r"exil",r"移居",r"迁往",r"搬到",r"回到",r"流亡"],
- "creation":[r"publish",r"released",r"wrote",r"directed",r"founded",r"launched",r"invent",r"discover",r"作品",r"出版",r"发表",r"创立",r"推出",r"发明",r"发现"],
+ "creation":[r"publish",r"released",r"wrote",r"directed",r"launched",r"invent",r"discover",r"作品",r"出版",r"发表",r"推出",r"发明",r"发现"],
+ "organization":[r"founded",r"co-founded",r"established (?:a|the) (?:company|foundation|organization|party|institute)",r"创立",r"创办",r"成立.*(?:公司|基金会|组织|政党|研究所)"],
  "recognition":[r"award",r"won",r"prize",r"honou?r",r"elected",r"nominat",r"获奖",r"获得",r"当选",r"提名"],
  "relationship":[r"married",r"divorc",r"separat",r"婚",r"离婚",r"分居"],
- "setback":[r"fired",r"dismissed",r"bankrupt",r"arrested",r"imprison",r"defeat",r"failed",r"破产",r"逮捕",r"监禁",r"失败",r"被解雇"]
+ "family":[r"(?:son|daughter|child) was born",r"gave birth to",r"had (?:a|their) (?:son|daughter|child)",r"(?:mother|father) died",r"(?:母亲|父亲|母親|父親).*去世",r"儿子.*出生",r"女儿.*出生",r"兒子.*出生",r"女兒.*出生"],
+ "legal":[r"arrested",r"imprison",r"convicted",r"acquitted",r"逮捕",r"监禁",r"監禁",r"定罪",r"无罪",r"無罪"],
+ "setback":[r"fired",r"dismissed",r"bankrupt",r"defeat",r"failed",r"破产",r"失败",r"被解雇"]
 }
 COMPILED={k:[re.compile(x,re.I) for x in xs] for k,xs in KEYWORDS.items()}
 
