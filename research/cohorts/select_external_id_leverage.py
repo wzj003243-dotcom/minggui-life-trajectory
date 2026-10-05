@@ -9,9 +9,17 @@ def main():
     ap.add_argument("coverage");ap.add_argument("core");ap.add_argument("bridge");ap.add_argument("output")
     ap.add_argument("--target",type=int,default=250)
     ap.add_argument("--max-per-country",type=int,default=30)
+    ap.add_argument("--exclude-cohort",default="",help="optional CSV[.gz] of previously attempted people to exclude")
     args=ap.parse_args()
     cov=json.load(open(args.coverage,encoding="utf-8"))
     by_id={x["person_id"]:x for x in cov.get("people",[])}
+    excluded=set()
+    if args.exclude_cohort:
+        opener=gzip.open if args.exclude_cohort.endswith(".gz") else open
+        with opener(args.exclude_cohort,"rt",encoding="utf-8",newline="") as ef:
+            for row in csv.DictReader(ef):
+                q=(row.get("wikidata_id") or row.get("person_id") or row.get("wikidata_code") or "").strip()
+                if q:excluded.add(q)
     eligible_ids=set()
     with gzip.open(args.bridge,"rt",encoding="utf-8",newline="") as f:
         for r in csv.DictReader(f):
@@ -23,7 +31,7 @@ def main():
     cand=[]
     for row in rows:
         q=(row.get("wikidata_id") or "").strip()
-        if q not in eligible_ids:continue
+        if q in excluded or q not in eligible_ids:continue
         c=by_id.get(q)
         if not c:continue
         e=int(c.get("effective_event_points") if c.get("effective_event_points") is not None else (c.get("event_count") or 0));d=int(c.get("domain_count") or 0);s=int(c.get("stage_count") or 0);src=int(c.get("source_family_count") or 0)
@@ -55,7 +63,7 @@ def main():
               "current_coverage_tier":c.get("coverage_tier","thin")
             });wr.writerow(x)
     report={
-      "bridge_people":len(eligible_ids),"eligible_core_people":len(cand),"selected":len(selected),
+      "bridge_people":len(eligible_ids),"excluded_previously_attempted":len(excluded),"eligible_core_people":len(cand),"selected":len(selected),
       "target":args.target,"selected_tiers":dict(Counter(x[4].get("coverage_tier","thin") for x in selected)),
       "country_counts":dict(country_counts.most_common())
     }
