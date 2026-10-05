@@ -1,0 +1,21 @@
+{
+  "dataset_id": "minggui-timed-core-founding-v0.1",
+  "status": "frozen-research-snapshot",
+  "workflow": {
+    "run_id": 37274738937,
+    "artifact_id": 11329995687,
+    "artifact_digest": "sha256:899477b5cadb53c5f2def382683a2b3ef8f566809f981a9f8777eced61318103"
+  },
+  "cohort": {
+    "verified_timed_people": 3093
+  },
+  "events": {
+    "people_with_founding_events": 239,
+    "organization_founding_events": 423,
+    "raw_bindings": 425,
+    "invalid_time_rows": 2,
+    "missing_parent_birth_rows": 0,
+    "failed_batches": 0
+  },
+  "identity_method": "organization P112 founded by person -> organization P571 inception; no name matching"
+}
