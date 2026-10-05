@@ -38,52 +38,52 @@ jobs:
       - name: Normalize BHHT backbone
         run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/biography
 
-      - name: Select balanced 3k cohort
+      - name: Select balanced 750 cohort
         run: >
           python research/cohorts/select_stratified_bhht.py
           data/processed/biography/bhht_core.csv.gz
-          data/processed/biography/bhht_stratified_3k.csv.gz
-          --target 3000
+          data/processed/biography/bhht_stratified_750.csv.gz
+          --target 750
           --min-per-stratum 2
 
       - name: Fetch precise Wikidata births
         run: >
           python research/acquire/fetch_wikidata_birth_assertions.py
-          data/processed/biography/bhht_stratified_3k.csv.gz
-          data/processed/biography/wikidata_birth_assertions_3k.csv.gz
+          data/processed/biography/bhht_stratified_750.csv.gz
+          data/processed/biography/wikidata_birth_assertions_750.csv.gz
           --limit 0
           --batch-size 120
 
       - name: Canonicalize births
         run: >
           python research/pipeline/canonicalize_births.py
-          data/processed/biography/wikidata_birth_assertions_3k.csv.gz
-          data/processed/biography/canonical_births_3k.csv.gz
+          data/processed/biography/wikidata_birth_assertions_750.csv.gz
+          data/processed/biography/canonical_births_750.csv.gz
 
-      - name: Select clean 2k text cohort
+      - name: Select clean 500 text cohort
         run: >
           python research/cohorts/select_event_enrichment_cohort.py
-          data/processed/biography/bhht_stratified_3k.csv.gz
-          data/processed/biography/canonical_births_3k.csv.gz
-          data/processed/biography/text_cohort_2k.csv.gz
-          --target 2000
+          data/processed/biography/bhht_stratified_750.csv.gz
+          data/processed/biography/canonical_births_750.csv.gz
+          data/processed/biography/text_cohort_500.csv.gz
+          --target 500
 
       - name: Build Wikipedia sitelink bridge
         run: >
           python research/acquire/fetch_wikipedia_sitelinks.py
-          data/processed/biography/text_cohort_2k.csv.gz
-          data/processed/biography/wikipedia_sitelinks_2k.csv.gz
+          data/processed/biography/text_cohort_500.csv.gz
+          data/processed/biography/wikipedia_sitelinks_500.csv.gz
           --id-column wikidata_code
-          --limit 2000
+          --limit 500
 
       - name: Fetch revision-pinned biographies
         run: >
           python research/acquire/fetch_wikipedia_biographies.py
-          data/processed/biography/text_cohort_2k.csv.gz
-          data/processed/biography/wikipedia_biographies_2k.jsonl.gz
+          data/processed/biography/text_cohort_500.csv.gz
+          data/processed/biography/wikipedia_biographies_500.jsonl.gz
           --id-column wikidata_code
           --limit 2000
-          --sitelink-map data/processed/biography/wikipedia_sitelinks_2k.csv.gz
+          --sitelink-map data/processed/biography/wikipedia_sitelinks_500.csv.gz
 
       - name: Install biography parser
         run: pip install mwparserfromhell==0.7.2
@@ -91,20 +91,20 @@ jobs:
       - name: Extract date-bearing timeline candidates
         run: >
           python research/extraction/extract_timeline_candidates.py
-          data/processed/biography/wikipedia_biographies_2k.jsonl.gz
-          data/processed/biography/timeline_candidates_2k.csv.gz
+          data/processed/biography/wikipedia_biographies_500.jsonl.gz
+          data/processed/biography/timeline_candidates_500.csv.gz
 
       - name: Convert high-precision candidates to rule events
         run: >
           python research/extraction/candidates_to_rule_events.py
-          data/processed/biography/timeline_candidates_2k.csv.gz
-          data/processed/biography/canonical_births_3k.csv.gz
-          data/processed/biography/biography_rule_events_2k.csv.gz
+          data/processed/biography/timeline_candidates_500.csv.gz
+          data/processed/biography/canonical_births_750.csv.gz
+          data/processed/biography/biography_rule_events_500.csv.gz
 
       - name: Select Gold 300 review cohort
         run: >
           python research/cohorts/select_gold300.py
-          data/processed/biography/text_cohort_2k.csv.gz
+          data/processed/biography/text_cohort_500.csv.gz
           data/processed/biography/gold300_people.csv.gz
           --target 300
           --id-column wikidata_code
@@ -112,7 +112,7 @@ jobs:
       - name: Build Gold review queue
         run: >
           python research/extraction/build_gold_review_queue.py
-          data/processed/biography/timeline_candidates_2k.csv.gz
+          data/processed/biography/timeline_candidates_500.csv.gz
           data/processed/biography/gold300_review_queue.csv.gz
           --people 300
           --max-per-person 8
