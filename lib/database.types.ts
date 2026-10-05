@@ -180,6 +180,26 @@ export type Database = {
         }
         Relationships: []
       }
+      lifegraph_model_eligibility_v1: {
+        Row: {
+          any_trajectory_task: boolean | null
+          canonical_name: string | null
+          documentation_density: string | null
+          domain_count: number | null
+          hazard_task: boolean | null
+          multisource_validation_task: boolean | null
+          next_event_task: boolean | null
+          observed_life_stage_count: number | null
+          person_id: number | null
+          raw_event_count: number | null
+          sequence_task: boolean | null
+          source_family_count: number | null
+          strict_dense_benchmark: boolean | null
+          trajectory_event_count: number | null
+          wikidata_id: string | null
+        }
+        Relationships: []
+      }
       lifegraph_model_inputs_v1: {
         Row: {
           birth_country: string | null
@@ -198,6 +218,35 @@ export type Database = {
           person_id: number | null
           quality_flags: Json | null
           wikidata_id: string | null
+        }
+        Relationships: []
+      }
+      lifegraph_observation_profiles_v1: {
+        Row: {
+          birth_overlap_events: number | null
+          canonical_name: string | null
+          day_precision_events: number | null
+          documentation_density: string | null
+          domain_count: number | null
+          first_recorded_event_date: string | null
+          first_trajectory_event_age: number | null
+          high_confidence_events: number | null
+          last_recorded_event_date: string | null
+          last_trajectory_event_age: number | null
+          month_precision_events: number | null
+          multi_domain: boolean | null
+          multi_source: boolean | null
+          multi_stage: boolean | null
+          observed_life_stage_count: number | null
+          person_id: number | null
+          posthumous_events: number | null
+          prebirth_interval_events: number | null
+          raw_event_count: number | null
+          source_event_counts: Json | null
+          source_family_count: number | null
+          trajectory_event_count: number | null
+          wikidata_id: string | null
+          year_precision_events: number | null
         }
         Relationships: []
       }
