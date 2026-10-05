@@ -25,20 +25,47 @@ def read(path,key):
             if k:out[k]=r
     return out
 
-def get_entities(qids,retries=6):
+def get_entities(qids,retries=10):
     params={"action":"wbgetentities","format":"json","formatversion":"2","maxlag":"5",
             "ids":"|".join(qids),"props":"claims"}
     data=urllib.parse.urlencode(params).encode()
     for a in range(retries):
         req=urllib.request.Request(API,data=data,headers={"User-Agent":UA,"Content-Type":"application/x-www-form-urlencoded"})
         try:
-            with urllib.request.urlopen(req,timeout=90) as r:return json.load(r).get("entities",{})
+            with urllib.request.urlopen(req,timeout=120) as r:
+                return json.load(r).get("entities",{})
         except urllib.error.HTTPError as e:
-            if e.code not in (429,500,502,503,504) or a==retries-1:raise
-            time.sleep(min(30,2**a)+random.random())
+            if e.code not in (429,500,502,503,504) or a==retries-1:
+                raise
+            retry=e.headers.get("Retry-After")
+            try:
+                delay=float(retry) if retry else min(120,max(4,2**a))+random.random()
+            except Exception:
+                delay=min(120,max(4,2**a))+random.random()
+            time.sleep(delay)
         except Exception:
-            if a==retries-1:raise
-            time.sleep(min(30,2**a)+random.random())
+            if a==retries-1:
+                raise
+            time.sleep(min(90,max(3,2**a))+random.random())
+
+def get_entities_lossless(qids):
+    """Fetch all possible entities, recursively splitting any persistently failing batch.
+
+    A transient failure must never silently erase an entire 40-QID identity batch. A single
+    entity is counted as failed only after it has exhausted the full retry policy on its own.
+    """
+    try:
+        return get_entities(qids), []
+    except Exception as exc:
+        if len(qids)==1:
+            print(f"identity single-qid failed {qids[0]}: {exc!r}",flush=True)
+            return {}, list(qids)
+        mid=len(qids)//2
+        left,lf=get_entities_lossless(qids[:mid])
+        time.sleep(.25+random.random()*.25)
+        right,rf=get_entities_lossless(qids[mid:])
+        left.update(right)
+        return left,lf+rf
 
 def julian_to_gregorian(y,m,d):
     a=(14-m)//12;yy=y+4800-a;mm=m+12*a-3
@@ -84,14 +111,15 @@ def main():
         link_rows=list(csv.DictReader(f))
     qids=sorted({r["wikidata_id"] for r in link_rows if r.get("wikidata_id") and r["wikidata_id"].startswith("Q")},
                 key=lambda x:int(x[1:]))
-    entities={};failures=0
+    entities={};failed_qids=[]
     for i in range(0,len(qids),args.batch_size):
         batch=qids[i:i+args.batch_size]
-        try:entities.update(get_entities(batch))
-        except Exception as e:
-            failures+=len(batch);print(f"identity batch failed {i}: {e!r}",flush=True)
-        if (i//args.batch_size+1)%20==0:print(f"identity_qids={min(i+args.batch_size,len(qids))}/{len(qids)}",flush=True)
+        got,failed=get_entities_lossless(batch)
+        entities.update(got);failed_qids.extend(failed)
+        if (i//args.batch_size+1)%20==0:
+            print(f"identity_qids={min(i+args.batch_size,len(qids))}/{len(qids)} failed_so_far={len(failed_qids)}",flush=True)
         time.sleep(args.sleep)
+    failures=len(set(failed_qids))
 
     out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
     fields=["adb_id","rodden_rating","wikidata_id","wikipedia_url","astro_birth_date_normalized",
@@ -134,7 +162,8 @@ def main():
       "status_counts":dict(counts),"verified_qids":len(verified_q),
       "verified_duplicate_qids":len(duplicate_verified),
       "verified_duplicate_examples":dict(list(duplicate_verified.items())[:20]),
-      "training_rule":"identity_status must equal verified_day_match"
+      "failed_qids":sorted(set(failed_qids),key=lambda x:int(x[1:])) if failed_qids else [],
+      "training_rule":"identity_status must equal verified_day_match; final training snapshot requires api_failure_qids == 0"
     }
     out.with_name(out.name[:-7]+".report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
     print(json.dumps(report,ensure_ascii=False,indent=2))
