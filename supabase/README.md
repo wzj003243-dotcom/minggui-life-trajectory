@@ -94,3 +94,36 @@ Every frozen import is registered in:
 - `research.dataset_membership`
 
 Every model feature snapshot should point to a dataset snapshot and information cutoff. Do not overwrite a frozen snapshot to make a later experiment look better.
+
+
+## Preservation policy
+
+Sparse public records are **not** treated as low-quality people and are never deleted merely for being sparse.
+
+Every source-backed person remains in `research.people`, including people with zero currently usable life events. Every source-backed event remains in `research.life_events`; quality flags determine whether an event is suitable for a particular modeling task, not whether the historical fact is kept.
+
+Two server-only views make this explicit:
+
+- `lifegraph_observation_profiles_v1`: describes documentation density, temporal precision, life-stage coverage, domain coverage, and source coverage.
+- `lifegraph_model_eligibility_v1`: task-specific eligibility flags such as next-event, sequence, hazard, multi-source validation, and strict dense benchmark.
+
+Current documentation-density distribution:
+
+- none: 1,451
+- sparse (1–4 events): 869
+- light (5–14): 497
+- moderate (15–39): 230
+- dense (40+): 29
+
+These labels describe the **record**, not the person.
+
+Current task-specific usable counts:
+
+- any trajectory task: 1,610
+- next-event task: 1,147
+- sequence task: 961
+- hazard task: 723
+- multi-source validation: 10
+- strict dense benchmark: 4
+
+A person can therefore be valuable for one analysis and unusable for another without being dropped from the database.
