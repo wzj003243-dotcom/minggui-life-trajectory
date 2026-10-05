@@ -1,0 +1,81 @@
+name: Timed core founding enrichment
+
+on:
+  push:
+    branches:
+      - "data-run-timed-core-founding*"
+    paths:
+      - "research/acquire/TRIGGER_TIMED_CORE_FOUNDING.md"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: timed-core-founding
+  cancel-in-progress: true
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download frozen verified timed-core artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-linked-life-dataset
+          path: prior
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37118108407
+          github-token: ${{ github.token }}
+
+      - name: Restore core and canonical births
+        run: |
+          mkdir -p data/processed/timed
+          CORE=$(find prior -type f -name 'timed_linked_cohort.csv.gz' | head -1)
+          BIRTHS=$(find prior -type f -name 'timed_canonical_births.csv.gz' | head -1)
+          test -n "$CORE" && test -n "$BIRTHS"
+          cp "$CORE" data/processed/timed/timed_linked_cohort.csv.gz
+          cp "$BIRTHS" data/processed/timed/timed_canonical_births.csv.gz
+
+      - name: Fetch organization-founding events
+        run: >
+          python research/acquire/fetch_wikidata_founded_org_events.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/timed_canonical_births.csv.gz
+          data/processed/timed/life_events_founding.csv.gz
+          --id-column wikidata_id
+          --batch-size 80
+          --sleep 0.35
+
+      - name: Measure founding coverage
+        run: >
+          python research/quality/lifegraph_coverage_report.py
+          data/processed/timed/founding_coverage.json
+          data/processed/timed/life_events_founding.csv.gz
+          --cohort data/processed/timed/timed_linked_cohort.csv.gz
+          --cohort-id-column wikidata_id
+          --min-events 1
+          --min-domains 1
+          --min-stages 1
+          --min-sources 1
+
+      - name: Show reports
+        if: always()
+        run: |
+          find data/processed/timed -name '*.report.json' -print -exec cat {} \; || true
+          cat data/processed/timed/founding_coverage.json || true
+
+      - name: Upload founding enrichment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-core-founding
+          path: data/processed/timed/
+          retention-days: 30
+          if-no-files-found: warn
