@@ -81,8 +81,8 @@ Deno.serve(async(req)=>{
       const person=pmap.get(String(r.person_id||"").trim());
       if(!person){missingPeople++;continue;}
       const dr=dateRange(r.event_date);
-      if(!dr){invalidDates++;continue;}
-      const amin=ageYears(person.birth,dr.min),amax=ageYears(person.birth,dr.max);
+      if(!dr) invalidDates++;
+      const amin=dr?ageYears(person.birth,dr.min):null,amax=dr?ageYears(person.birth,dr.max):null;
       const amid=amin===null||amax===null?null:Math.round(((amin+amax)/2)*10000)/10000;
       const eventKey=String(r.event_id);
       const sourceKey="musicbrainz:"+eventKey;
@@ -97,14 +97,15 @@ Deno.serve(async(req)=>{
       const et=String(r.event_type||"other");
       events.push({
         event_key:eventKey,person_id:person.id,domain:et.includes(".")?et.split(".",1)[0]:"other",
-        event_type:et,event_date_min:dr.min,event_date_max:dr.max,temporal_precision:dr.precision,
-        age_min:amin,age_max:amax,age_mid:amid,observable_from:dr.max,
+        event_type:et,event_date_min:dr?dr.min:null,event_date_max:dr?dr.max:null,temporal_precision:dr?dr.precision:"unknown",
+        age_min:amin,age_max:amax,age_mid:amid,observable_from:dr?dr.max:null,
         subject_external_id:nil(r.musicbrainz_id),source_family:"musicbrainz",
         extraction_method:nil(r.identity_method)||"wikidata_p434_exact_mbid",
         confidence:0.95,source_rank:"structured-external",reference_count:1,
         attributes:{title:nil(r.title),subtype:nil(r.subtype),musicbrainz_id:nil(r.musicbrainz_id),source_event_id:eventKey},
         source_snapshot_id:SNAPSHOT_ID,source_url:nil(r.source_url),
-        model_eligible:!prebirth,quality_flags:prebirth?{prebirth_interval:true}:{}
+        model_eligible:Boolean(dr)&&!prebirth,
+        quality_flags:!dr?{invalid_source_date:true,raw_event_date:String(r.event_date||"")}:prebirth?{prebirth_interval:true}:{}
       });
     }
 
