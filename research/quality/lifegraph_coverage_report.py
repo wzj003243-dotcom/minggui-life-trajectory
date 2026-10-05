@@ -74,15 +74,19 @@ def main():
                 if st:p["stages"][st]+=1
                 total+=1
 
-    rows=[];ready=0
+    rows=[];ready=0;bronze=silver=gold=0
     for pid,p in people.items():
-        ok=(p["events"]>=args.min_events and len(p["domains"])>=args.min_domains and
-            len(p["stages"])>=args.min_stages and len(p["sources"])>=args.min_sources)
-        ready+=int(ok)
+        domain_count=len(p["domains"]);stage_count=len(p["stages"]);source_count=len(p["sources"])
+        bronze_ok=(p["events"]>=8 and domain_count>=3 and stage_count>=2 and source_count>=1)
+        silver_ok=(p["events"]>=args.min_events and domain_count>=args.min_domains and
+                   stage_count>=args.min_stages and source_count>=args.min_sources)
+        gold_ok=(p["events"]>=25 and domain_count>=5 and stage_count>=4 and source_count>=2)
+        bronze+=int(bronze_ok);silver+=int(silver_ok);gold+=int(gold_ok);ready+=int(silver_ok)
         rows.append({
-          "person_id":pid,"event_count":p["events"],"domain_count":len(p["domains"]),
-          "stage_count":len(p["stages"]),"source_family_count":len(p["sources"]),
-          "model_ready_thick":ok,"domains":dict(p["domains"]),"stages":dict(p["stages"]),
+          "person_id":pid,"event_count":p["events"],"domain_count":domain_count,
+          "stage_count":stage_count,"source_family_count":source_count,
+          "coverage_tier":"gold" if gold_ok else ("silver" if silver_ok else ("bronze" if bronze_ok else "thin")),
+          "model_ready_thick":silver_ok,"domains":dict(p["domains"]),"stages":dict(p["stages"]),
           "sources":dict(p["sources"])
         })
     counts=sorted(x["event_count"] for x in rows)
@@ -95,6 +99,14 @@ def main():
       "event_count":{"median":statistics.median(counts) if counts else 0,"p25":q(.25),"p75":q(.75),"p90":q(.90)},
       "model_ready_thick_people":ready,
       "model_ready_thick_share":(ready/len(rows) if rows else 0),
+      "coverage_tiers":{
+        "bronze_or_better_people":bronze,
+        "silver_or_better_people":silver,
+        "gold_people":gold,
+        "bronze_rule":">=8 events, >=3 domains, >=2 life stages, >=1 source family",
+        "silver_rule":f">={args.min_events} events, >={args.min_domains} domains, >={args.min_stages} life stages, >={args.min_sources} source families",
+        "gold_rule":">=25 events, >=5 domains, >=4 life stages, >=2 source families"
+      },
       "thresholds":{"min_events":args.min_events,"min_domains":args.min_domains,"min_stages":args.min_stages,"min_sources":args.min_sources},
       "life_stages":[x[2] for x in STAGES]
     }
