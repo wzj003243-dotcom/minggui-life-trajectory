@@ -1,0 +1,1 @@
+# Seed dedicated MingGui Supabase
