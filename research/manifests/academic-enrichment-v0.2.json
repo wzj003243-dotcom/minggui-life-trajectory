@@ -18,16 +18,21 @@
   "identity": {
     "method": "Wikidata P496 ORCID -> exact OpenAlex ORCID; no fuzzy names",
     "people_with_wikidata_orcid": 74,
-    "openalex_exact_orcid_authors": 63
+    "openalex_exact_orcid_authors": 63,
+    "direct_openalex_p10283_people": 7
   },
   "events": {
     "people_with_scholarly_events": 63,
     "scholarly_event_rows": 12513,
     "work_cap_per_author": 300,
     "authors_truncated_at_cap": 23,
-    "annual_state_rows": 2743
+    "annual_state_rows": 2773,
+    "orcid_event_rows": 12513,
+    "direct_p10283_event_rows": 1459,
+    "merged_deduplicated_event_rows": 12813
   },
   "modeling_policy": [
+    "ORCID and P10283 event streams are deduplicated by stable OpenAlex work event_id before annual state aggregation.",
     "Raw scholarly works are atomic evidence/output events, not equally weighted major life events.",
     "Use annual academic state vectors for cross-person trajectory models.",
     "Current citation totals are audit metadata only and must not enter historical cutoff features."
