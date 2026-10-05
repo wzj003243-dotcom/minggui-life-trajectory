@@ -26,7 +26,7 @@ def main():
         if q not in eligible_ids:continue
         c=by_id.get(q)
         if not c:continue
-        e=int(c.get("event_count") or 0);d=int(c.get("domain_count") or 0);s=int(c.get("stage_count") or 0);src=int(c.get("source_family_count") or 0)
+        e=int(c.get("effective_event_points") if c.get("effective_event_points") is not None else (c.get("event_count") or 0));d=int(c.get("domain_count") or 0);s=int(c.get("stage_count") or 0);src=int(c.get("source_family_count") or 0)
         # Second-source enrichments are most valuable when current source diversity is low.
         source_bonus=2.5 if src<2 else 0.0
         score=4*min(e,15)/15+4*min(d,4)/4+3*min(s,3)/3+source_bonus
@@ -42,13 +42,13 @@ def main():
         score,q,country,row,c=item
         if country_counts[country]>=args.max_per_country:continue
         selected.append(item);country_counts[country]+=1
-    extra=["leverage_score","current_event_count","current_domain_count","current_stage_count","current_source_family_count","current_coverage_tier"]
+    extra=["leverage_score","current_event_count","current_effective_event_points","current_domain_count","current_stage_count","current_source_family_count","current_coverage_tier"]
     out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
     with gzip.open(out,"wt",encoding="utf-8",newline="") as w:
         wr=csv.DictWriter(w,fieldnames=fields+extra);wr.writeheader()
         for score,q,country,row,c in selected:
             x=dict(row);x.update({
-              "leverage_score":round(score,6),"current_event_count":c.get("event_count",0),
+              "leverage_score":round(score,6),"current_event_count":c.get("event_count",0),"current_effective_event_points":c.get("effective_event_points",c.get("event_count",0)),
               "current_domain_count":c.get("domain_count",0),"current_stage_count":c.get("stage_count",0),
               "current_source_family_count":c.get("source_family_count",0),
               "current_coverage_tier":c.get("coverage_tier","thin")
