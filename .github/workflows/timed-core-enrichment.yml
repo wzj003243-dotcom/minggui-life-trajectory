@@ -1,0 +1,179 @@
+name: Timed core enrichment
+
+on:
+  push:
+    branches:
+      - "data-run-timed-core-enrich*"
+    paths:
+      - "research/acquire/TRIGGER_TIMED_CORE_ENRICH.md"
+
+concurrency:
+  group: timed-core-enrichment
+  cancel-in-progress: true
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Acquire and normalize official Astro sample
+        run: python research/acquire/fetch_astro_sample.py
+
+      - name: Install BaZi dependency
+        run: pip install lunar_python==1.4.8
+
+      - name: Build objective four-pillar features
+        run: >
+          python research/features/build_bazi_features.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          --mode timed
+          --id-column adb_id
+          --date-column birth_date
+          --time-column birth_time_local
+          --calendar-column calendar
+          --rating-column rodden_rating
+
+      - name: Resolve Astro pages to Wikidata
+        run: >
+          python research/acquire/resolve_astro_wikidata.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_links.csv.gz
+
+      - name: Validate identities by birth date
+        run: >
+          python research/quality/validate_adb_wikidata_identity.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_links.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          data/processed/timed/adb_wikidata_identity_validation.csv.gz
+
+      - name: Build verified timed core
+        run: >
+          python research/pipeline/build_timed_linked_cohort.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_identity_validation.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          data/processed/timed/timed_linked_cohort.csv.gz
+
+      - name: Build canonical births
+        run: >
+          python research/pipeline/timed_linked_to_canonical_births.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/timed_canonical_births.csv.gz
+
+      - name: Fetch structured dated claims
+        run: >
+          python research/acquire/fetch_wikidata_claims_api.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/structured_claims.csv.gz
+          --id-column wikidata_id
+          --rating-column rodden_rating
+          --ratings AA,A,B
+          --batch-size 35
+          --sleep 0.20
+
+      - name: Normalize structured claims
+        run: >
+          python research/pipeline/claims_to_life_events.py
+          data/processed/timed/structured_claims.csv.gz
+          data/processed/timed/timed_canonical_births.csv.gz
+          data/processed/timed/life_events_wikidata.csv.gz
+
+      - name: Build ORCID bridge
+        run: >
+          python research/acquire/fetch_wikidata_external_ids.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/orcid_bridge.csv.gz
+          --property P496
+          --id-column wikidata_id
+
+      - name: Build direct OpenAlex bridge
+        run: >
+          python research/acquire/fetch_wikidata_external_ids.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/openalex_bridge.csv.gz
+          --property P10283
+          --id-column wikidata_id
+
+      - name: Build MusicBrainz bridge
+        run: >
+          python research/acquire/fetch_wikidata_external_ids.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/musicbrainz_bridge.csv.gz
+          --property P434
+          --id-column wikidata_id
+
+      - name: Enrich OpenAlex through ORCID
+        run: >
+          python research/acquire/fetch_openalex_academic_events.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/openalex_orcid
+          --id-column wikidata_id
+          --limit 0
+          --max-works-per-author 200
+          --orcid-map data/processed/timed/orcid_bridge.csv.gz
+
+      - name: Enrich OpenAlex through direct author IDs
+        run: >
+          python research/acquire/fetch_openalex_direct_events.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/openalex_bridge.csv.gz
+          data/processed/timed/openalex_direct
+          --id-column wikidata_id
+          --limit 0
+          --max-works-per-author 200
+
+      - name: Enrich MusicBrainz timelines
+        run: >
+          python research/acquire/fetch_musicbrainz_events.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/musicbrainz
+          --id-column wikidata_id
+          --limit 0
+          --mbid-map data/processed/timed/musicbrainz_bridge.csv.gz
+
+      - name: Normalize scholarly events into LifeGraph
+        run: >
+          python research/pipeline/external_events_to_lifegraph.py
+          data/processed/timed/timed_canonical_births.csv.gz
+          data/processed/timed/life_events_openalex.csv.gz
+          data/processed/timed/openalex_orcid/academic_events.csv.gz
+          data/processed/timed/openalex_direct/academic_events_p10283.csv.gz
+
+      - name: Normalize music events into LifeGraph
+        run: >
+          python research/pipeline/external_events_to_lifegraph.py
+          data/processed/timed/timed_canonical_births.csv.gz
+          data/processed/timed/life_events_musicbrainz.csv.gz
+          data/processed/timed/musicbrainz/music_events.csv.gz
+
+      - name: Measure core LifeGraph thickness
+        run: >
+          python research/quality/lifegraph_coverage_report.py
+          data/processed/timed/core_lifegraph_coverage.json
+          data/processed/timed/life_events_wikidata.csv.gz
+          data/processed/timed/life_events_openalex.csv.gz
+          data/processed/timed/life_events_musicbrainz.csv.gz
+          --cohort data/processed/timed/timed_linked_cohort.csv.gz
+          --cohort-id-column wikidata_id
+
+      - name: Show reports
+        if: always()
+        run: |
+          find data/processed/timed -name '*.report.json' -print -exec cat {} \; || true
+          cat data/processed/timed/core_lifegraph_coverage.json || true
+
+      - name: Upload enriched timed core
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-core-enrichment
+          path: data/processed/timed/
+          retention-days: 30
+          if-no-files-found: warn
