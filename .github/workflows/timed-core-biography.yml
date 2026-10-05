@@ -1,0 +1,128 @@
+name: Timed core biography enrichment
+
+on:
+  push:
+    branches:
+      - "data-run-timed-core-biography*"
+    paths:
+      - "research/acquire/TRIGGER_TIMED_CORE_BIOGRAPHY.md"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: timed-core-biography
+  cancel-in-progress: true
+
+jobs:
+  biography:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download frozen fast timed-core artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-enrichment-fast
+          path: prior
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37278193981
+          github-token: ${{ github.token }}
+
+      - name: Restore core files
+        run: |
+          mkdir -p data/processed/timed
+          for name in timed_linked_cohort.csv.gz timed_canonical_births.csv.gz core_lifegraph_coverage.json life_events_wikidata.csv.gz life_events_openalex.csv.gz; do
+            SRC=$(find prior -type f -name "$name" | head -1)
+            if [ -z "$SRC" ]; then
+              echo "Missing $name"
+              exit 1
+            fi
+            cp "$SRC" "data/processed/timed/$name"
+          done
+
+      - name: Select high-leverage Biography 300
+        run: >
+          python research/cohorts/select_biography_leverage.py
+          data/processed/timed/core_lifegraph_coverage.json
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/biography_leverage_300.csv.gz
+          --target 300
+          --max-per-country 30
+
+      - name: Fetch revision-pinned biographies
+        run: >
+          python research/acquire/fetch_wikipedia_biographies.py
+          data/processed/timed/biography_leverage_300.csv.gz
+          data/processed/timed/biographies_300.jsonl.gz
+          --id-column wikidata_id
+          --limit 300
+
+      - name: Install biography parser
+        run: pip install mwparserfromhell==0.7.2
+
+      - name: Extract auditable timeline candidates
+        run: >
+          python research/extraction/extract_timeline_candidates.py
+          data/processed/timed/biographies_300.jsonl.gz
+          data/processed/timed/biography_candidates_300.csv.gz
+
+      - name: Convert precision-first rule events
+        run: >
+          python research/extraction/candidates_to_rule_events.py
+          data/processed/timed/biography_candidates_300.csv.gz
+          data/processed/timed/timed_canonical_births.csv.gz
+          data/processed/timed/life_events_wikipedia_rule.csv.gz
+
+      - name: Build Gold review queue
+        run: >
+          python research/extraction/build_gold_review_queue.py
+          data/processed/timed/biography_candidates_300.csv.gz
+          data/processed/timed/gold_review_queue.csv.gz
+          --people 120
+          --max-per-person 8
+
+      - name: Canonicalize cross-source events with Biography
+        run: >
+          python research/pipeline/canonicalize_lifegraph_events.py
+          data/processed/timed/life_events_canonical_biography.csv.gz
+          data/processed/timed/life_events_wikidata.csv.gz
+          data/processed/timed/life_events_openalex.csv.gz
+          data/processed/timed/life_events_wikipedia_rule.csv.gz
+
+      - name: Measure post-Biography thickness
+        run: >
+          python research/quality/lifegraph_coverage_report.py
+          data/processed/timed/core_lifegraph_coverage_biography.json
+          data/processed/timed/life_events_canonical_biography.csv.gz
+          --cohort data/processed/timed/timed_linked_cohort.csv.gz
+          --cohort-id-column wikidata_id
+
+      - name: Build cross-source yearly states
+        run: >
+          python research/pipeline/build_lifegraph_year_states.py
+          data/processed/timed/life_events_wikidata.csv.gz
+          data/processed/timed/core_year_states_biography.csv.gz
+          --additional-events
+          data/processed/timed/life_events_openalex.csv.gz
+          data/processed/timed/life_events_wikipedia_rule.csv.gz
+
+      - name: Show reports
+        if: always()
+        run: |
+          find data/processed/timed -name '*.report.json' -print -exec cat {} \; || true
+          cat data/processed/timed/core_lifegraph_coverage_biography.json || true
+
+      - name: Upload Biography-enriched timed core
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-core-biography-enrichment
+          path: data/processed/timed/
+          retention-days: 30
+          if-no-files-found: warn
