@@ -46,7 +46,7 @@ def main():
             "temporal_precision","age_min","age_max","age_mid","subject_id","source_id",
             "source_url","extraction_method","confidence","observable_from","attributes_json"]
     out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
-    n=0;people=set();missing_birth=bad_date=0
+    n=0;people=set();missing_birth=bad_date=0;duplicate_event_ids=0;seen_event_ids=set()
     with gzip.open(out,"wt",encoding="utf-8",newline="") as w:
         wr=csv.DictWriter(w,fieldnames=fields);wr.writeheader()
         for rawpath in args.inputs:
@@ -54,6 +54,10 @@ def main():
                 for r in csv.DictReader(f):
                     pid=(r.get("person_id") or "").strip();b=births.get(pid)
                     if not b:missing_birth+=1;continue
+                    eid=(r.get("event_id") or "").strip()
+                    if eid and eid in seen_event_ids:
+                        duplicate_event_ids+=1
+                        continue
                     x=interval(r.get("event_date"))
                     if not x:bad_date+=1;continue
                     lo,hi,prec=x;amid=round((age(b,lo)+age(b,hi))/2,4)
@@ -63,8 +67,9 @@ def main():
                     attrs={k:v for k,v in r.items() if k not in {
                       "event_id","person_id","event_type","event_date","source_id","source_url"
                     } and v not in ("",None)}
+                    final_eid=eid or f"{pid}:{source}:{n}"
                     wr.writerow({
-                      "event_id":r.get("event_id") or f"{pid}:{source}:{n}",
+                      "event_id":final_eid,
                       "person_id":pid,"domain":et.split(".",1)[0],"event_type":et,
                       "event_date_min":lo.isoformat(),"event_date_max":hi.isoformat(),
                       "temporal_precision":prec,"age_min":age(b,lo),"age_max":age(b,hi),
@@ -72,8 +77,9 @@ def main():
                       "source_url":r.get("source_url") or "","extraction_method":"structured-external",
                       "confidence":source_conf(source),"observable_from":hi.isoformat(),
                       "attributes_json":json.dumps(attrs,ensure_ascii=False,separators=(",",":"))
-                    });n+=1;people.add(pid)
-    report={"lifegraph_event_rows":n,"people":len(people),"missing_birth_rows":missing_birth,"invalid_date_rows":bad_date}
+                    });n+=1;people.add(pid);seen_event_ids.add(final_eid)
+    report={"lifegraph_event_rows":n,"people":len(people),"missing_birth_rows":missing_birth,
+            "invalid_date_rows":bad_date,"duplicate_event_ids_skipped":duplicate_event_ids}
     out.with_name(out.name[:-7]+".report.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
     print(json.dumps(report,indent=2))
 if __name__=="__main__":main()
