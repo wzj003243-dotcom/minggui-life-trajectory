@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "unit": "person-year",
+  "information_cutoff": "End of calendar year. Every feature must be computable from evidence observable on or before the cutoff.",
+  "generic_features": {
+    "activity": [
+      "events_this_year",
+      "effective_points_this_year",
+      "cumulative_events",
+      "cumulative_effective_points",
+      "rolling_3y_events",
+      "rolling_3y_effective_points",
+      "rolling_5y_effective_points"
+    ],
+    "breadth": [
+      "domains_this_year",
+      "effective_domains_this_year",
+      "cumulative_domain_breadth",
+      "cumulative_domain_entropy",
+      "rolling_5y_domain_breadth",
+      "event_family_entropy_5y"
+    ],
+    "momentum": [
+      "creation_momentum_3y",
+      "recognition_rolling_5y",
+      "migration_rolling_5y"
+    ],
+    "transitions": [
+      "career_transitions_cumulative",
+      "migration_transitions_cumulative",
+      "relationship_transitions_cumulative",
+      "event_type_switches_cumulative"
+    ],
+    "active_state_proxies": [
+      "active_career_roles",
+      "active_education_affiliations",
+      "active_relationships"
+    ],
+    "persistence": [
+      "years_since_last_event",
+      "years_since_last_career",
+      "years_since_last_migration",
+      "years_since_last_creation",
+      "years_since_last_recognition"
+    ],
+    "coverage": [
+      "source_families_this_year",
+      "cumulative_source_family_breadth"
+    ]
+  },
+  "domain_features": {
+    "yearly_pattern": "year_count__<domain>",
+    "effective_yearly_pattern": "effective_year_count__<domain>",
+    "cumulative_effective_pattern": "cum_effective__<domain>"
+  },
+  "specialized_state_tables": {
+    "academic_year_states": {
+      "source": "OpenAlex",
+      "examples": [
+        "works_count",
+        "rolling_3y_works",
+        "field_entropy",
+        "field_switch",
+        "institution_switch",
+        "cumulative_unique_fields",
+        "cumulative_unique_institutions"
+      ],
+      "rule": "Publication-time metadata only. Current citation totals are audit metadata, never historical cutoff features."
+    },
+    "music_year_states": {
+      "source": "MusicBrainz",
+      "examples": [
+        "release_groups",
+        "performance_events",
+        "albums",
+        "singles",
+        "eps",
+        "rolling_3y_release_groups",
+        "release_gap_before_year",
+        "years_since_first_release"
+      ],
+      "rule": "Dated release/performance metadata only."
+    }
+  },
+  "missingness_policy": [
+    "No recorded event is not equivalent to no real event.",
+    "Generic state rows are safest inside the observed event span unless a censoring/observation-window model is supplied.",
+    "No-event prediction targets require explicit right-censoring logic."
+  ],
+  "source_policy": [
+    "Distinct source systems do not automatically imply independent primary evidence.",
+    "Independent-evidence claims require source-record provenance and independence-group review."
+  ],
+  "prohibited_cutoff_features": [
+    "current total citations when forecasting historical years",
+    "final lifetime occupation",
+    "future awards or works",
+    "future biography prose",
+    "post-cutoff notoriety or page coverage"
+  ]
+}
