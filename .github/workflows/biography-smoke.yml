@@ -1,70 +1,63 @@
-name: Biography quick smoke
+name: Biography adapter smoke
 
 on:
   push:
-    branches: ["data-run-biography-smoke*"]
-    paths: ["research/acquire/TRIGGER_BIOGRAPHY_SMOKE.md"]
-
-concurrency:
-  group: biography-smoke
-  cancel-in-progress: true
+    branches:
+      - "data-run-biography-smoke*"
+    paths:
+      - "research/acquire/TRIGGER_BIOGRAPHY_SMOKE.md"
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: {python-version: "3.12"}
-      - name: Restore public source cache
-        id: sources
-        uses: actions/cache@v4
         with:
-          path: data/raw/acquired/
-          key: minggui-public-sources-v1-fe44aa6f
-      - name: Acquire sources if needed
-        if: steps.sources.outputs.cache-hit != 'true'
-        run: python research/acquire/fetch_public_datasets.py
-      - name: Normalize BHHT
-        run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/smoke
-      - name: Select 250 diverse people
-        run: >
-          python research/cohorts/select_stratified_bhht.py
-          data/processed/smoke/bhht_core.csv.gz
-          data/processed/smoke/cohort_250.csv.gz
-          --target 250
-          --min-per-stratum 1
-      - name: Build 200-person Wikipedia sitelink bridge
-        run: >
-          python research/acquire/fetch_wikipedia_sitelinks.py
-          data/processed/smoke/cohort_250.csv.gz
-          data/processed/smoke/sitelinks_200.csv.gz
-          --id-column wikidata_code
-          --limit 200
+          python-version: "3.12"
 
-      - name: Fetch 200 revision-pinned biographies
+      - name: Build tiny known-page cohort
+        run: |
+          python - <<'PY'
+          import csv,gzip
+          qids=["Q42","Q76","Q937","Q7259","Q5582","Q762","Q23","Q91","Q307","Q692","Q5879","Q8016"]
+          with gzip.open("smoke.csv.gz","wt",encoding="utf-8",newline="") as f:
+              w=csv.DictWriter(f,fieldnames=["wikidata_id"])
+              w.writeheader()
+              for q in qids:w.writerow({"wikidata_id":q})
+          PY
+
+      - name: Fetch revision-pinned biographies
         run: >
           python research/acquire/fetch_wikipedia_biographies.py
-          data/processed/smoke/cohort_250.csv.gz
-          data/processed/smoke/biographies_200.jsonl.gz
-          --id-column wikidata_code
-          --limit 200
-          --sitelink-map data/processed/smoke/sitelinks_200.csv.gz
+          smoke.csv.gz
+          smoke_biographies.jsonl.gz
+          --id-column wikidata_id
+          --limit 12
+
       - name: Install parser
         run: pip install mwparserfromhell==0.7.2
-      - name: Extract candidates
+
+      - name: Extract timeline candidates
         run: >
           python research/extraction/extract_timeline_candidates.py
-          data/processed/smoke/biographies_200.jsonl.gz
-          data/processed/smoke/candidates_200.csv.gz
-      - name: Show reports
-        if: always()
-        run: find data/processed/smoke -name '*.report.json' -print -exec cat {} \; || true
-      - name: Upload smoke artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: minggui-biography-smoke
-          path: data/processed/smoke/
-          retention-days: 14
+          smoke_biographies.jsonl.gz
+          smoke_candidates.csv.gz
+
+      - name: Assert useful output
+        run: |
+          python - <<'PY'
+          import json
+          with open("smoke_biographies.report.json",encoding="utf-8") as f:
+              b=json.load(f)
+          with open("smoke_candidates.report.json",encoding="utf-8") as f:
+              c=json.load(f)
+          print(json.dumps({"biographies":b,"candidates":c},indent=2))
+          if b.get("biographies_fetched",0) < 8:
+              raise SystemExit("biography smoke failed: fewer than 8/12 pages fetched")
+          if b.get("content_chars_total",0) < 50000:
+              raise SystemExit("biography smoke failed: too little revision content")
+          if c.get("candidate_rows",0) < 20:
+              raise SystemExit("biography smoke failed: too few timeline candidates")
+          PY
