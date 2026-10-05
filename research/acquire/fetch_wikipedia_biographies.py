@@ -69,7 +69,7 @@ def revision_content(rev):
     main=slots.get("main") or {}
     return main.get("content") or rev.get("content") or rev.get("*") or ""
 
-def fetch_site(site,pairs,batch_size=10):
+def fetch_site(site,pairs,batch_size=1):
     """pairs: [(qid,title)] -> revision-pinned records"""
     api=HOST[site];out=[];failed=0
     for i in range(0,len(pairs),batch_size):
