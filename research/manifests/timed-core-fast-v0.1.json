@@ -1,0 +1,51 @@
+{
+  "dataset_id": "minggui-timed-core-fast-v0.1",
+  "status": "frozen-research-snapshot",
+  "workflow": {
+    "run_id": 37278193981,
+    "artifact_id": 11331520848,
+    "artifact_name": "minggui-timed-core-enrichment-fast",
+    "artifact_digest": "sha256:2f1d2655c115d9e85f282aba590ac22b3f899c3fc58fe0234953ac5bc359c271",
+    "head_sha": "19dd6c286ca1ad65463c36064b7b4ef2fe24e242"
+  },
+  "core": {
+    "verified_timed_people": 3093,
+    "canonical_event_rows": 14348,
+    "people_with_events": 1645,
+    "wikidata_plus_openalex_only": true
+  },
+  "openalex": {
+    "people_with_wikidata_orcid": 16,
+    "exact_openalex_authors": 11,
+    "scholarly_event_rows": 1744,
+    "p10283_verified_authors": 0
+  },
+  "thickness_effective_metric": {
+    "high_frequency_rule": "papers/music releases/performances contribute at most one effective trajectory point per person-year-family",
+    "raw_event_count": {
+      "median": 1,
+      "p25": 0,
+      "p75": 4,
+      "p90": 13
+    },
+    "effective_trajectory_points": {
+      "median": 1,
+      "p25": 0,
+      "p75": 4,
+      "p90": 13
+    },
+    "people_ge15_effective_points": 263,
+    "people_ge4_domains": 97,
+    "people_ge3_life_stages": 676,
+    "people_ge2_source_families": 11,
+    "bronze_or_better_people": 191,
+    "silver_or_better_people": 4,
+    "gold_people": 2
+  },
+  "tier_rules": {
+    "bronze": ">=8 effective points, >=3 domains, >=2 life stages, >=1 source family",
+    "silver": ">=15 effective points, >=4 domains, >=3 life stages, >=2 source families",
+    "gold": ">=25 effective points, >=5 domains, >=4 life stages, >=2 source families"
+  },
+  "next_priority": "Add independent Biography and MusicBrainz evidence to high-leverage single-source people."
+}
