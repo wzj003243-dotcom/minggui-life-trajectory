@@ -1,0 +1,63 @@
+name: Compare timed core snapshots
+
+on:
+  push:
+    branches:
+      - "data-run-core-compare*"
+    paths:
+      - "research/acquire/TRIGGER_CORE_COMPARE.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download old and current artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p old current
+          curl -L --fail-with-body             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11271839707/zip"             -o old.zip
+          curl -L --fail-with-body             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11330742270/zip"             -o current.zip
+          unzip -q old.zip -d old
+          unzip -q current.zip -d current
+          find old current -maxdepth 2 -type f | sort
+
+      - name: Compare verified cores
+        run: |
+          python - <<'PY'
+          import csv,gzip,json,pathlib
+          def locate(root,name):
+              hits=list(pathlib.Path(root).rglob(name))
+              if not hits: raise SystemExit(f"missing {root}/{name}")
+              return hits[0]
+          def qids(path):
+              with gzip.open(path,"rt",encoding="utf-8",newline="") as f:
+                  return {r["wikidata_id"]:r for r in csv.DictReader(f)}
+          oldp=locate("old","timed_linked_cohort.csv.gz")
+          curp=locate("current","timed_linked_cohort.csv.gz")
+          old=qids(oldp); cur=qids(curp)
+          old_only=sorted(set(old)-set(cur))
+          cur_only=sorted(set(cur)-set(old))
+          both=sorted(set(old)&set(cur))
+          report={
+            "old_count":len(old),"current_count":len(cur),"intersection":len(both),
+            "old_only_count":len(old_only),"current_only_count":len(cur_only),
+            "old_only":[{"wikidata_id":q,"adb_id":old[q].get("adb_id"),"name":old[q].get("name"),"rodden_rating":old[q].get("rodden_rating")} for q in old_only],
+            "current_only":[{"wikidata_id":q,"adb_id":cur[q].get("adb_id"),"name":cur[q].get("name"),"rodden_rating":cur[q].get("rodden_rating")} for q in cur_only]
+          }
+          pathlib.Path("core-diff.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-core-diff
+          path: core-diff.json
+          retention-days: 30
