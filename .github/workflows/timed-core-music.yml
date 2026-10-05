@@ -53,7 +53,7 @@ jobs:
           bridge=locate("musicbrainz_bridge.csv.gz")
           pathlib.Path("data/processed/music").mkdir(parents=True,exist_ok=True)
           with gzip.open(bridge,"rt",encoding="utf-8",newline="") as f:
-              br=list(csv.DictReader(f)); bfields=f.fieldnames
+              reader=csv.DictReader(f); br=list(reader); bfields=reader.fieldnames
           selected={r["wikidata_id"] for r in br if int(hashlib.sha256(r["wikidata_id"].encode()).hexdigest()[:8],16)%nshards==shard}
           with gzip.open(bridge,"rt",encoding="utf-8",newline="") as src,gzip.open("data/processed/music/bridge.csv.gz","wt",encoding="utf-8",newline="") as dst:
               rr=csv.DictReader(src); w=csv.DictWriter(dst,fieldnames=rr.fieldnames);w.writeheader()
