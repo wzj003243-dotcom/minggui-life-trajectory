@@ -1,0 +1,31 @@
+{
+  "dataset_id": "minggui-academic-enrichment-v0.3",
+  "status": "frozen-research-snapshot",
+  "workflow": {
+    "run_id": 37271463455,
+    "artifact_id": 11328094999,
+    "artifact_digest": "sha256:c82a6399ed15d952fc56941acb197790b4b77d2c81462dde4b28c99b08a6b65b"
+  },
+  "cohort": {
+    "selector": "occupation-targeted",
+    "selected_people": 800
+  },
+  "identity": {
+    "orcid_people_with_id": 74,
+    "openalex_exact_orcid_authors": 63,
+    "p10283_single_openalex_id_people": 7,
+    "p10283_verified_openalex_authors": 7,
+    "policy": "P496 ORCID and P10283 exact OpenAlex identifiers only; no fuzzy names"
+  },
+  "events": {
+    "orcid_event_rows": 12513,
+    "p10283_event_rows": 1459,
+    "merged_unique_event_rows": 12813,
+    "duplicate_events_removed": 1159,
+    "annual_state_rows": 2773
+  },
+  "modeling_policy": [
+    "Use annual state vectors for trajectory modeling; raw works remain evidence/atomic events.",
+    "Current citation totals are excluded from historical cutoff features."
+  ]
+}
