@@ -1,0 +1,68 @@
+{
+  "version": "1.0.0",
+  "purpose": "Stable cross-source event families used after source-specific events are normalized.",
+  "families": {
+    "education": [
+      "education.start",
+      "education.complete",
+      "education.degree",
+      "education.affiliation"
+    ],
+    "career": [
+      "career.role_start",
+      "career.role_end",
+      "career.role"
+    ],
+    "migration": [
+      "migration.move"
+    ],
+    "creation": [
+      "creation.scholar_output",
+      "creation.music_output",
+      "creation.notable_work",
+      "creation.publication",
+      "creation.founding",
+      "creation.discovery"
+    ],
+    "recognition": [
+      "recognition.award",
+      "recognition.election"
+    ],
+    "relationship": [
+      "relationship.marriage",
+      "relationship.divorce"
+    ],
+    "family": [
+      "family.child_birth"
+    ],
+    "organization": [
+      "organization.affiliation"
+    ],
+    "performance": [
+      "performance.event"
+    ],
+    "setback": [
+      "setback.legal",
+      "setback.financial",
+      "setback.job_loss"
+    ]
+  },
+  "high_frequency_families": [
+    "creation.scholar_output",
+    "creation.music_output",
+    "performance.event"
+  ],
+  "high_frequency_policy": "For generic life-trajectory thickness/state features, count at most one point per person-year-family. Preserve all atomic records in source tables.",
+  "source_specific_examples": {
+    "creation.scholar_work": "creation.scholar_output",
+    "creation.music_release_group": "creation.music_output",
+    "performance.music_event": "performance.event",
+    "career.position.start": "career.role_start",
+    "career.position.end": "career.role_end",
+    "career.employer.start": "career.role_start",
+    "career.employer.end": "career.role_end",
+    "relationship.spouse.start": "relationship.marriage",
+    "relationship.spouse.end": "relationship.divorce"
+  },
+  "principle": "Canonical families are observable state-transition categories. They are not value judgments such as success, destiny, good luck, or failure unless the underlying event itself is objectively a failure event."
+}
