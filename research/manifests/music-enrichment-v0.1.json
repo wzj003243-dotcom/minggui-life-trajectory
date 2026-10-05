@@ -2,29 +2,28 @@
   "dataset_id": "minggui-music-enrichment-v0.1",
   "status": "frozen-research-snapshot",
   "workflow": {
-    "run_id": 37127881070,
-    "artifact_id": 11276330404,
-    "artifact_digest": "sha256:e70aaf7dd84351665e91a004ee59078dda07cd882389b038f35558ea28bf3a39"
+    "run_id": 37271123258,
+    "artifact_id": 11328469291,
+    "artifact_digest": "sha256:8af4497462958aa1e24e253719763ac20e51bc31bab8e8b672c87f87bde485c2"
   },
-  "selection": {
-    "input_people": 3000,
-    "wikidata_p434_people": 173,
-    "single_musicbrainz_id_people": 168,
-    "ambiguous_p434_people": 5
+  "cohort": {
+    "selector": "occupation-targeted",
+    "selected_people": 300,
+    "eligible_rows": 123992
+  },
+  "identity": {
+    "people_with_p434": 175,
+    "single_mbid_people": 170,
+    "policy": "Wikidata P434 exact MusicBrainz artist ID; no fuzzy names"
   },
   "events": {
-    "people_with_dated_events": 89,
-    "dated_event_rows": 1343,
-    "release_group_events": 1151,
-    "performance_events": 192,
-    "annual_state_rows": 1485,
-    "average_events_per_eventful_person": 15.089887640449438
+    "people_with_dated_music_events": 115,
+    "dated_event_rows": 1545,
+    "release_group_events": 1441,
+    "performance_events": 104,
+    "annual_state_rows": 1779
   },
-  "identity": "Wikidata P434 -> exact MusicBrainz artist id; no fuzzy names",
-  "rate_limit_policy": ">=1.1 seconds between MusicBrainz web-service browse requests",
-  "limitations": [
-    "Broad 3k sample is not music-targeted; coverage will be much higher in a specialist music cohort.",
-    "MusicBrainz event coverage is uneven; release groups are substantially denser than performance events.",
-    "This snapshot contains dated core-metadata events only; it does not infer artistic importance."
+  "modeling_policy": [
+    "MusicBrainz releases/performances are atomic creator evidence; yearly states are preferred for trajectory models."
   ]
 }
