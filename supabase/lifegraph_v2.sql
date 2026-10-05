@@ -500,3 +500,17 @@ grant select on public.lifegraph_observation_profiles_v1 to service_role;
 grant select on public.lifegraph_model_eligibility_v1 to service_role;
 grant select on research.person_observation_profile_v1 to service_role;
 grant select on research.person_model_eligibility_v1 to service_role;
+
+
+-- Reproducibility: feature/state versions from different source snapshots must coexist.
+alter table research.feature_snapshots
+  drop constraint if exists feature_snapshots_person_id_information_cutoff_feature_spec_key;
+alter table research.feature_snapshots
+  drop constraint if exists feature_snapshots_person_id_information_cutoff_feature_spec_vers_key;
+create unique index if not exists feature_snapshots_versioned_uidx
+  on research.feature_snapshots(person_id,information_cutoff,feature_spec_version,source_snapshot_id);
+
+alter table research.person_year_states
+  drop constraint if exists person_year_states_person_id_year_state_spec_version_key;
+create unique index if not exists person_year_states_versioned_uidx
+  on research.person_year_states(person_id,year,state_spec_version,source_snapshot_id);
