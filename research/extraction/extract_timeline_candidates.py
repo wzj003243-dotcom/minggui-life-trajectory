@@ -31,6 +31,16 @@ def classify(s):
 
 def clean(s):return re.sub(r"\s+"," ",s).strip()
 
+def wikitext_to_plain(raw):
+    code=mwparserfromhell.parse(raw or "")
+    # Narrative extraction should not treat infobox/template markup as prose.
+    for node in list(code.filter_templates(recursive=True)):
+        try:
+            code.remove(node,recursive=True)
+        except Exception:
+            pass
+    return code.strip_code(normalize=True,collapse=True) or ""
+
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("biographies");ap.add_argument("output");args=ap.parse_args()
     out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
