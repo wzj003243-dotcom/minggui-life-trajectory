@@ -1,1 +1,3 @@
 # Seed final core
+
+run
