@@ -1,0 +1,49 @@
+name: Seed MingGui Supabase
+
+on:
+  push:
+    branches:
+      - "data-run-supabase-seed-v1"
+    paths:
+      - "research/acquire/TRIGGER_SUPABASE_SEED.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frozen timed-core artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11330742270/zip" \
+            -o artifact.zip
+          ls -lh artifact.zip
+          sha256sum artifact.zip
+
+      - name: Import into dedicated Supabase
+        run: |
+          curl -L --fail-with-body \
+            --max-time 600 \
+            -X POST \
+            -H "Content-Type: application/zip" \
+            --data-binary @artifact.zip \
+            "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-bulk-import" \
+            | tee import-result.json
+          python - <<'PY'
+          import json
+          p=json.load(open("import-result.json"))
+          if not p.get("ok"):
+              raise SystemExit(p)
+          print(json.dumps(p,indent=2))
+          PY
