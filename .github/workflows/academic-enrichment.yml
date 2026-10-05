@@ -38,18 +38,18 @@ jobs:
       - name: Normalize BHHT backbone
         run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/academic
 
-      - name: Select balanced 3k cohort
+      - name: Select academic-targeted 800 cohort
         run: >
-          python research/cohorts/select_stratified_bhht.py
+          python research/cohorts/select_occupation_targeted.py
           data/processed/academic/bhht_core.csv.gz
-          data/processed/academic/bhht_stratified_3k.csv.gz
-          --target 3000
-          --min-per-stratum 2
+          data/processed/academic/academic_targeted_800.csv.gz
+          --keywords "discovery,science,research,professor,academic,scientist,physicist,chemist,biolog,mathematic,engineer,medicine,physician"
+          --target 800
 
       - name: Build Wikidata ORCID bridge
         run: >
           python research/acquire/fetch_wikidata_external_ids.py
-          data/processed/academic/bhht_stratified_3k.csv.gz
+          data/processed/academic/academic_targeted_800.csv.gz
           data/processed/academic/orcid_bridge.csv.gz
           --property P496
           --id-column wikidata_code
@@ -57,11 +57,11 @@ jobs:
       - name: Enrich ORCID-verified academic timelines
         run: >
           python research/acquire/fetch_openalex_academic_events.py
-          data/processed/academic/bhht_stratified_3k.csv.gz
+          data/processed/academic/academic_targeted_800.csv.gz
           data/processed/academic/openalex
           --id-column wikidata_id
-          --limit 3000
-          --max-works-per-author 500
+          --limit 800
+          --max-works-per-author 300
           --orcid-map data/processed/academic/orcid_bridge.csv.gz
 
       - name: Build yearly academic state vectors
