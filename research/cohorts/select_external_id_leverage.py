@@ -27,8 +27,9 @@ def main():
         c=by_id.get(q)
         if not c:continue
         e=int(c.get("effective_event_points") if c.get("effective_event_points") is not None else (c.get("event_count") or 0));d=int(c.get("domain_count") or 0);s=int(c.get("stage_count") or 0);src=int(c.get("source_family_count") or 0)
-        # Second-source enrichments are most valuable when current source diversity is low.
-        source_bonus=2.5 if src<2 else 0.0
+        # External-source requests are reserved for people still lacking a second source family.
+        if src>=2:continue
+        source_bonus=2.5
         score=4*min(e,15)/15+4*min(d,4)/4+3*min(s,3)/3+source_bonus
         if c.get("coverage_tier")=="bronze":score+=2
         if e>=10:score+=1
