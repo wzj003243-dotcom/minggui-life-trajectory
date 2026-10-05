@@ -272,6 +272,70 @@ export type Database = {
         }
         Relationships: []
       }
+      lifegraph_training_examples_v1: {
+        Row: {
+          canonical_name: string | null
+          censoring_reason: string | null
+          cutoff_age: number | null
+          cutoff_date: string | null
+          cutoff_features: Json | null
+          dataset_key: string | null
+          dataset_status: string | null
+          dataset_version: string | null
+          eligibility_flags: Json | null
+          fingerprint_sha256: string | null
+          history_domain_count: number | null
+          history_event_count: number | null
+          history_life_stage_count: number | null
+          history_source_family_count: number | null
+          history_summary: Json | null
+          included_event_keys: string[] | null
+          information_cutoff: string | null
+          leakage_audit_passed: boolean | null
+          observation_end_date: string | null
+          person_hash_fold: number | null
+          person_hash_split: string | null
+          right_censored: boolean | null
+          target_age: number | null
+          target_class_4: string | null
+          target_domain_raw: string | null
+          target_event_type: string | null
+          target_observable_from: string | null
+          target_payload: Json | null
+          wikidata_id: string | null
+        }
+        Relationships: []
+      }
+      lifegraph_training_readiness_v1: {
+        Row: {
+          dataset_key: string | null
+          error_audit_count: number | null
+          failed_error_audits: number | null
+          fingerprint_sha256: string | null
+          id: string | null
+          metadata: Json | null
+          person_count: number | null
+          row_count: number | null
+          status: string | null
+          training_ready: boolean | null
+          version: string | null
+          warning_count: number | null
+        }
+        Relationships: []
+      }
+      lifegraph_training_splits_v1: {
+        Row: {
+          assignment_basis: Json | null
+          dataset_key: string | null
+          dataset_version: string | null
+          fold: number | null
+          scenario_key: string | null
+          split_group: string | null
+          split_name: string | null
+          wikidata_id: string | null
+        }
+        Relationships: []
+      }
       lifegraph_year_states_v1: {
         Row: {
           canonical_name: string | null
