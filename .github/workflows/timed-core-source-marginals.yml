@@ -1,0 +1,100 @@
+name: Timed core source marginals
+
+on:
+  push:
+    branches:
+      - "data-run-timed-core-source-marginals*"
+    paths:
+      - "research/acquire/TRIGGER_TIMED_CORE_SOURCE_MARGINALS.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  marginals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download base core
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-enrichment-fast
+          path: src/base
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37278193981
+          github-token: ${{ github.token }}
+
+      - name: Download family addon
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-family-degree
+          path: src/family
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37274161457
+          github-token: ${{ github.token }}
+
+      - name: Download music addon
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-music-enrichment
+          path: src/music
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37278833653
+          github-token: ${{ github.token }}
+
+      - name: Download founding addon
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-founding
+          path: src/founding
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37274738937
+          github-token: ${{ github.token }}
+
+      - name: Download notable addon
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-notable-work
+          path: src/notable
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37274241572
+          github-token: ${{ github.token }}
+
+      - name: Restore files
+        run: |
+          mkdir -p data/processed/timed
+          find src/base -name 'timed_linked_cohort.csv.gz' -exec cp {} data/processed/timed/core.csv.gz \;
+          find src/family -name 'life_events_structured_degree_v2.csv.gz' -exec cp {} data/processed/timed/structured.csv.gz \;
+          find src/family -name 'life_events_family_child_birth.csv.gz' -exec cp {} data/processed/timed/family.csv.gz \;
+          find src/base -name 'life_events_openalex.csv.gz' -exec cp {} data/processed/timed/openalex.csv.gz \;
+          find src/music -name 'life_events_musicbrainz.csv.gz' -exec cp {} data/processed/timed/music.csv.gz \;
+          find src/founding -name 'life_events_founding.csv.gz' -exec cp {} data/processed/timed/founding.csv.gz \;
+          find src/notable -name 'life_events_notable_work.csv.gz' -exec cp {} data/processed/timed/notable.csv.gz \;
+
+      - name: Measure source marginal lift
+        run: >
+          python research/quality/source_marginal_coverage.py
+          data/processed/timed/source_marginals.json
+          --cohort data/processed/timed/core.csv.gz
+          --base structured=data/processed/timed/structured.csv.gz
+          --addon family=data/processed/timed/family.csv.gz
+          --addon openalex=data/processed/timed/openalex.csv.gz
+          --addon music=data/processed/timed/music.csv.gz
+          --addon founding=data/processed/timed/founding.csv.gz
+          --addon notable=data/processed/timed/notable.csv.gz
+
+      - name: Show result
+        run: cat data/processed/timed/source_marginals.json
+
+      - name: Upload source marginal report
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-core-source-marginals
+          path: data/processed/timed/source_marginals.json
+          retention-days: 30
