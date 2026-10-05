@@ -4,7 +4,7 @@ Default "model-ready thick" rule:
 - >= 15 effective trajectory points
 - >= 4 event domains
 - >= 3 life stages containing at least one event
-- >= 2 independent source families
+- >= 2 distinct source systems/families
 
 The report never treats publication-level scholarly works as equivalent to major life events.
 High-frequency output families (papers/releases/performances) contribute at most one effective
@@ -138,6 +138,7 @@ def main():
       },
       "thresholds":{"min_events":args.min_events,"min_domains":args.min_domains,"min_stages":args.min_stages,"min_sources":args.min_sources},
       "high_frequency_collapse_rule":"papers, music releases, and performances count at most once per person-year-family toward thickness tiers",
+      "source_system_note":"source_family_count measures distinct data systems (e.g. Wikidata/Wikipedia/OpenAlex), not guaranteed independent primary evidence; true independence requires source-record provenance review.",
       "life_stages":[x[2] for x in STAGES]
     }
     out=Path(args.output);out.parent.mkdir(parents=True,exist_ok=True)
