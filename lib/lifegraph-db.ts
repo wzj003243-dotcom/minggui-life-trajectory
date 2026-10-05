@@ -12,6 +12,10 @@ export type LifeGraphModelInput =
   Database["public"]["Views"]["lifegraph_model_inputs_v1"]["Row"];
 export type LifeGraphYearState =
   Database["public"]["Views"]["lifegraph_year_states_v1"]["Row"];
+export type LifeGraphObservationProfile =
+  Database["public"]["Views"]["lifegraph_observation_profiles_v1"]["Row"];
+export type LifeGraphModelEligibility =
+  Database["public"]["Views"]["lifegraph_model_eligibility_v1"]["Row"];
 
 function getConfig() {
   const url =
@@ -107,4 +111,19 @@ export async function getLifeGraphYearStates(
       `lifegraph_year_states_v1?select=*&wikidata_id=${eq(wikidataId)}${range}&order=year.asc`,
     )) ?? []
   );
+}
+
+
+export async function getLifeGraphObservationProfile(wikidataId: string) {
+  const rows = await supabaseRest<LifeGraphObservationProfile[]>(
+    `lifegraph_observation_profiles_v1?select=*&wikidata_id=${eq(wikidataId)}&limit=1`,
+  );
+  return rows?.[0] ?? null;
+}
+
+export async function getLifeGraphModelEligibility(wikidataId: string) {
+  const rows = await supabaseRest<LifeGraphModelEligibility[]>(
+    `lifegraph_model_eligibility_v1?select=*&wikidata_id=${eq(wikidataId)}&limit=1`,
+  );
+  return rows?.[0] ?? null;
 }
