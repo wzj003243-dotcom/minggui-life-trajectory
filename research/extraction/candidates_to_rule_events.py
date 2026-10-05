@@ -21,16 +21,20 @@ RULES=[
  ("migration.cross_region",[r"emigrat",r"immigrat",r"moved to",r"relocat",r"移居",r"迁往",r"搬到"]),
  ("creation.publication",[r"publish",r"出版",r"发表"]),
  ("creation.release",[r"released",r"发行",r"推出"]),
- ("creation.founded",[r"founded",r"co-founded",r"创立",r"创办"]),
+ ("organization.found",[r"founded",r"co-founded",r"established (?:a|the) (?:company|foundation|organization|party|institute)",r"创立",r"创办",r"成立.*(?:公司|基金会|组织|政党|研究所)"]),
  ("creation.invention",[r"invent",r"发明"]),
  ("creation.discovery",[r"discover",r"发现"]),
  ("recognition.award",[r"won .*award",r"received .*award",r"awarded",r"prize",r"获奖",r"获得.*奖"]),
  ("recognition.election",[r"elected",r"当选"]),
  ("relationship.marriage",[r"married",r"结婚",r"成婚"]),
  ("relationship.divorce",[r"divorc",r"离婚"]),
+ ("family.child_birth",[r"(?:son|daughter|child) was born",r"gave birth to",r"had (?:a|their) (?:son|daughter|child)",r"儿子.*出生",r"女儿.*出生",r"兒子.*出生",r"女兒.*出生"]),
+ ("family.parent_loss",[r"(?:mother|father) died",r"(?:母亲|父亲|母親|父親).*去世"]),
+ ("legal.arrest",[r"arrest",r"逮捕"]),
+ ("legal.imprisonment",[r"imprison",r"监禁",r"監禁"]),
+ ("legal.conviction",[r"convicted",r"定罪"]),
+ ("legal.acquittal",[r"acquitted",r"无罪",r"無罪"]),
  ("setback.bankruptcy",[r"bankrupt",r"破产"]),
- ("setback.arrest",[r"arrest",r"逮捕"]),
- ("setback.imprisonment",[r"imprison",r"监禁"]),
  ("setback.job_loss",[r"fired",r"dismissed",r"被解雇"])
 ]
 COMPILED=[(name,[re.compile(x,re.I) for x in xs]) for name,xs in RULES]
