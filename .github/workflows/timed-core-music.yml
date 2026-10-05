@@ -1,121 +1,129 @@
-name: Timed core MusicBrainz addon
+name: Timed core MusicBrainz sharded enrichment
 
 on:
   push:
     branches:
-      - "data-run-timed-core-music*"
+      - "data-run-timed-music*"
     paths:
-      - "research/acquire/TRIGGER_TIMED_CORE_MUSIC.md"
+      - "research/acquire/TRIGGER_TIMED_MUSIC.md"
 
 permissions:
   contents: read
   actions: read
 
-concurrency:
-  group: timed-core-music
-  cancel-in-progress: true
-
 jobs:
-  music:
+  shard:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Download frozen fast timed-core artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: minggui-timed-core-enrichment-fast
-          path: prior
-          repository: wzj003243-dotcom/minggui-life-trajectory
-          run-id: 37278193981
-          github-token: ${{ github.token }}
-
-      - name: Restore core files
+      - name: Download frozen timed-core artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p data/processed/timed
-          for name in timed_linked_cohort.csv.gz timed_canonical_births.csv.gz core_lifegraph_coverage.json life_events_wikidata.csv.gz life_events_openalex.csv.gz; do
-            SRC=$(find prior -type f -name "$name" | head -1)
-            if [ -z "$SRC" ]; then
-              echo "Missing $name"
-              exit 1
-            fi
-            cp "$SRC" "data/processed/timed/$name"
-          done
+          curl -L --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11330742270/zip" \
+            -o artifact.zip
+          mkdir artifact
+          unzip -q artifact.zip -d artifact
 
-      - name: Build MusicBrainz bridge
-        run: >
-          python research/acquire/fetch_wikidata_external_ids.py
-          data/processed/timed/timed_linked_cohort.csv.gz
-          data/processed/timed/musicbrainz_bridge.csv.gz
-          --property P434
-          --id-column wikidata_id
+      - name: Build shard inputs
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python - <<'PY'
+          import csv,gzip,hashlib,os,pathlib,shutil
+          shard=int(os.environ["SHARD"]); nshards=4
+          def locate(name):
+              hits=list(pathlib.Path("artifact").rglob(name))
+              if not hits: raise SystemExit(f"missing {name}")
+              return hits[0]
+          cohort=locate("timed_linked_cohort.csv.gz")
+          bridge=locate("musicbrainz_bridge.csv.gz")
+          pathlib.Path("data/processed/music").mkdir(parents=True,exist_ok=True)
+          with gzip.open(bridge,"rt",encoding="utf-8",newline="") as f:
+              br=list(csv.DictReader(f)); bfields=f.fieldnames
+          selected={r["wikidata_id"] for r in br if int(hashlib.sha256(r["wikidata_id"].encode()).hexdigest()[:8],16)%nshards==shard}
+          with gzip.open(bridge,"rt",encoding="utf-8",newline="") as src,gzip.open("data/processed/music/bridge.csv.gz","wt",encoding="utf-8",newline="") as dst:
+              rr=csv.DictReader(src); w=csv.DictWriter(dst,fieldnames=rr.fieldnames);w.writeheader()
+              for r in rr:
+                  if r["wikidata_id"] in selected:w.writerow(r)
+          with gzip.open(cohort,"rt",encoding="utf-8",newline="") as src,gzip.open("data/processed/music/cohort.csv.gz","wt",encoding="utf-8",newline="") as dst:
+              rr=csv.DictReader(src);w=csv.DictWriter(dst,fieldnames=rr.fieldnames);w.writeheader()
+              for r in rr:
+                  if r["wikidata_id"] in selected:w.writerow(r)
+          print("shard",shard,"people",len(selected))
+          PY
 
-      - name: Select high-leverage P434 cohort
-        run: >
-          python research/cohorts/select_external_id_leverage.py
-          data/processed/timed/core_lifegraph_coverage.json
-          data/processed/timed/timed_linked_cohort.csv.gz
-          data/processed/timed/musicbrainz_bridge.csv.gz
-          data/processed/timed/music_leverage_250.csv.gz
-          --target 250
-          --max-per-country 30
-
-      - name: Enrich MusicBrainz timelines
+      - name: Fetch MusicBrainz timeline shard
         run: >
           python research/acquire/fetch_musicbrainz_events.py
-          data/processed/timed/music_leverage_250.csv.gz
-          data/processed/timed/musicbrainz
+          data/processed/music/cohort.csv.gz
+          data/processed/music/out
           --id-column wikidata_id
-          --limit 250
-          --mbid-map data/processed/timed/musicbrainz_bridge.csv.gz
+          --limit 0
+          --mbid-map data/processed/music/bridge.csv.gz
 
-      - name: Normalize music events into LifeGraph
-        run: >
-          python research/pipeline/external_events_to_lifegraph.py
-          data/processed/timed/timed_canonical_births.csv.gz
-          data/processed/timed/life_events_musicbrainz.csv.gz
-          data/processed/timed/musicbrainz/music_events.csv.gz
-
-      - name: Canonicalize cross-source events with Music
-        run: >
-          python research/pipeline/canonicalize_lifegraph_events.py
-          data/processed/timed/life_events_canonical_music.csv.gz
-          data/processed/timed/life_events_wikidata.csv.gz
-          data/processed/timed/life_events_openalex.csv.gz
-          data/processed/timed/life_events_musicbrainz.csv.gz
-
-      - name: Measure post-Music thickness
-        run: >
-          python research/quality/lifegraph_coverage_report.py
-          data/processed/timed/core_lifegraph_coverage_music.json
-          data/processed/timed/life_events_canonical_music.csv.gz
-          --cohort data/processed/timed/timed_linked_cohort.csv.gz
-          --cohort-id-column wikidata_id
-
-      - name: Build cross-source yearly states
-        run: >
-          python research/pipeline/build_lifegraph_year_states.py
-          data/processed/timed/life_events_wikidata.csv.gz
-          data/processed/timed/core_year_states_music.csv.gz
-          --additional-events
-          data/processed/timed/life_events_openalex.csv.gz
-          data/processed/timed/life_events_musicbrainz.csv.gz
-
-      - name: Show reports
-        if: always()
-        run: |
-          find data/processed/timed -name '*.report.json' -print -exec cat {} \; || true
-          cat data/processed/timed/core_lifegraph_coverage_music.json || true
-
-      - name: Upload Music-enriched timed core
-        if: always()
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: minggui-timed-core-music-enrichment
-          path: data/processed/timed/
+          name: music-shard-${{ matrix.shard }}
+          path: data/processed/music/out/
           retention-days: 30
-          if-no-files-found: warn
+
+  merge:
+    needs: shard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: music-shard-*
+          path: shards
+
+      - name: Merge four complete shards
+        run: |
+          python - <<'PY'
+          import csv,gzip,json,pathlib
+          files=sorted(pathlib.Path("shards").rglob("music_events.csv.gz"))
+          if len(files)!=4: raise SystemExit(f"expected 4 shards, got {len(files)}")
+          pathlib.Path("merged").mkdir()
+          fields=None;rows=0;people=set()
+          with gzip.open("merged/music_events.csv.gz","wt",encoding="utf-8",newline="") as out:
+              w=None
+              for path in files:
+                  with gzip.open(path,"rt",encoding="utf-8",newline="") as f:
+                      r=csv.DictReader(f)
+                      if fields is None:
+                          fields=r.fieldnames;w=csv.DictWriter(out,fieldnames=fields);w.writeheader()
+                      elif r.fieldnames!=fields: raise SystemExit("schema mismatch")
+                      for row in r:
+                          w.writerow(row);rows+=1;people.add(row["person_id"])
+          reports=[]
+          for p in pathlib.Path("shards").rglob("music_enrichment.report.json"):
+              reports.append(json.loads(p.read_text()))
+          report={
+            "shards":4,
+            "people_with_dated_music_events":len(people),
+            "dated_event_rows":rows,
+            "shard_reports":reports,
+            "complete":True
+          }
+          pathlib.Path("merged/music_enrichment.report.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
+          print(json.dumps(report,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-core-musicbrainz-complete
+          path: merged/
+          retention-days: 30
