@@ -1,0 +1,115 @@
+name: Final identity consensus
+
+on:
+  push:
+    branches:
+      - "data-run-final-identity-consensus*"
+    paths:
+      - "research/acquire/TRIGGER_FINAL_IDENTITY_CONSENSUS.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download old and current timed artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p old current work
+          curl -L --fail-with-body             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11271839707/zip"             -o old.zip
+          curl -L --fail-with-body             -H "Accept: application/vnd.github+json"             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11330742270/zip"             -o current.zip
+          unzip -q old.zip -d old
+          unzip -q current.zip -d current
+
+      - name: Locate frozen inputs
+        run: |
+          python - <<'PY'
+          import pathlib,shutil
+          mapping=[
+            ("old","adb_wikidata_identity_validation.csv.gz","work/old_validation.csv.gz"),
+            ("current","adb_wikidata_identity_validation.csv.gz","work/current_validation.csv.gz"),
+            ("current","adb_wikidata_links.csv.gz","work/current_links.csv.gz"),
+            ("current","astro_public_births.csv.gz","work/astro_public_births.csv.gz"),
+            ("current","bazi_features_timed.csv.gz","work/bazi_features_timed.csv.gz"),
+          ]
+          for root,name,dst in mapping:
+              hits=list(pathlib.Path(root).rglob(name))
+              if not hits: raise SystemExit(f"missing {root}/{name}")
+              shutil.copy2(hits[0],dst);print(dst,"<-",hits[0])
+          PY
+
+      - name: Prepare persistent consensus and retry subset
+        run: >
+          python research/quality/merge_identity_snapshots.py prepare
+          work/old_validation.csv.gz
+          work/current_validation.csv.gz
+          work/current_links.csv.gz
+          work/retry_links.csv.gz
+          work/consensus_base.csv.gz
+          work/consensus_prepare.report.json
+
+      - name: Losslessly revalidate unresolved rows only
+        run: >
+          python research/quality/validate_adb_wikidata_identity.py
+          work/astro_public_births.csv.gz
+          work/retry_links.csv.gz
+          work/bazi_features_timed.csv.gz
+          work/retry_validation.csv.gz
+          --batch-size 15
+          --sleep 0.25
+
+      - name: Require zero retry API loss
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("work/retry_validation.report.json"))
+          print(json.dumps(r,indent=2))
+          if r.get("api_failure_qids") != 0:
+              raise SystemExit(f"retry api failure count {r.get('api_failure_qids')}")
+          PY
+
+      - name: Finalize consensus
+        run: >
+          python research/quality/merge_identity_snapshots.py finalize
+          work/consensus_base.csv.gz
+          work/retry_validation.csv.gz
+          work/final_identity_validation.csv.gz
+          work/final_identity_validation.report.json
+
+      - name: Build final verified core
+        run: >
+          python research/pipeline/build_timed_linked_cohort.py
+          work/astro_public_births.csv.gz
+          work/final_identity_validation.csv.gz
+          work/bazi_features_timed.csv.gz
+          work/final_timed_linked_cohort.csv.gz
+
+      - name: Build final canonical births
+        run: >
+          python research/pipeline/timed_linked_to_canonical_births.py
+          work/final_timed_linked_cohort.csv.gz
+          work/final_timed_canonical_births.csv.gz
+
+      - name: Final summary
+        run: |
+          cat work/consensus_prepare.report.json
+          cat work/retry_validation.report.json
+          cat work/final_identity_validation.report.json
+          cat work/final_timed_linked_cohort.report.json
+          cat work/final_timed_canonical_births.report.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: minggui-final-identity-consensus-core
+          path: work/
+          retention-days: 30
