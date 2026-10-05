@@ -22,6 +22,7 @@ create table if not exists research.dataset_snapshots (
   source_git_sha text,
   person_count integer,
   event_count bigint,
+  model_event_count bigint,
   observation_cutoff_date date,
   frozen_at timestamptz,
   person_membership_sha256 text,
@@ -190,6 +191,8 @@ create table if not exists research.dataset_event_membership (
   dataset_snapshot_id uuid not null references research.dataset_snapshots(id) on delete cascade,
   event_id bigint not null references research.life_events(id) on delete cascade,
   inclusion_role text not null default 'member',
+  snapshot_model_eligible boolean not null default true,
+  exclusion_reason text,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   primary key(dataset_snapshot_id, event_id)
@@ -542,7 +545,8 @@ grant select on research.person_model_eligibility_v1 to service_role;
 
 
 -- Freeze gate: a snapshot is training-safe only after person/event membership and
--- the observation window are fixed and fingerprinted.
+-- the observation window are fixed and fingerprinted. Intrinsic event validity is
+-- separate from snapshot-time eligibility so future/undated records can be preserved.
 create or replace function research.freeze_dataset_snapshot_v1(
   p_snapshot_id uuid,
   p_observation_cutoff_date date
@@ -551,6 +555,7 @@ returns table(
   snapshot_id uuid,
   frozen_person_count integer,
   frozen_event_count bigint,
+  frozen_model_event_count bigint,
   person_sha256 text,
   event_sha256 text,
   frozen_timestamp timestamptz
@@ -558,14 +563,15 @@ returns table(
 language plpgsql
 security invoker
 set search_path=pg_catalog,research,extensions
-as $
+as $$
 declare
   v_dataset_key text;
   v_person_count integer;
   v_event_count bigint;
+  v_model_event_count bigint;
   v_bazi_count integer;
   v_orphan_events bigint;
-  v_future_events bigint;
+  v_future_eligible bigint;
   v_person_sha text;
   v_event_sha text;
   v_frozen_at timestamptz := clock_timestamp();
@@ -590,10 +596,6 @@ begin
     raise exception 'cannot freeze empty person membership';
   end if;
 
-  select count(*)::bigint into v_event_count
-  from research.dataset_event_membership dem
-  where dem.dataset_snapshot_id=p_snapshot_id;
-
   select count(*)::bigint into v_orphan_events
   from research.dataset_event_membership dem
   join research.life_events e on e.id=dem.event_id
@@ -607,16 +609,38 @@ begin
     raise exception 'snapshot has % event memberships for people outside the person cohort',v_orphan_events;
   end if;
 
-  select count(*)::bigint into v_future_events
+  update research.dataset_event_membership dem
+  set snapshot_model_eligible=case
+        when not e.model_eligible then false
+        when e.observable_from is null then false
+        when e.observable_from>p_observation_cutoff_date then false
+        else true
+      end,
+      exclusion_reason=case
+        when not e.model_eligible then 'intrinsic_model_ineligible'
+        when e.observable_from is null then 'missing_observable_from'
+        when e.observable_from>p_observation_cutoff_date then 'after_snapshot_observation_cutoff'
+        else null
+      end
+  from research.life_events e
+  where dem.dataset_snapshot_id=p_snapshot_id
+    and e.id=dem.event_id;
+
+  select count(*)::bigint,
+         count(*) filter(where dem.snapshot_model_eligible)::bigint
+  into v_event_count,v_model_event_count
+  from research.dataset_event_membership dem
+  where dem.dataset_snapshot_id=p_snapshot_id;
+
+  select count(*)::bigint into v_future_eligible
   from research.dataset_event_membership dem
   join research.life_events e on e.id=dem.event_id
   where dem.dataset_snapshot_id=p_snapshot_id
-    and e.model_eligible
-    and e.observable_from is not null
-    and e.observable_from>p_observation_cutoff_date;
+    and dem.snapshot_model_eligible
+    and (e.observable_from is null or e.observable_from>p_observation_cutoff_date);
 
-  if v_future_events<>0 then
-    raise exception 'snapshot has % model-eligible events observable after cutoff %',v_future_events,p_observation_cutoff_date;
+  if v_future_eligible<>0 then
+    raise exception 'snapshot eligibility derivation left % cutoff-invalid events',v_future_eligible;
   end if;
 
   if v_dataset_key='timed-core' then
@@ -648,6 +672,8 @@ begin
       coalesce(e.observable_from::text,'')||E'\\x1f'||
       e.source_family||E'\\x1f'||
       e.model_eligible::text||E'\\x1f'||
+      dem.snapshot_model_eligible::text||E'\\x1f'||
+      coalesce(dem.exclusion_reason,'')||E'\\x1f'||
       e.attributes::text||E'\\x1f'||e.quality_flags::text||E'\\x1f'||
       dem.inclusion_role||E'\\x1f'||dem.metadata::text,
       E'\\x1e' order by e.event_key
@@ -661,21 +687,23 @@ begin
   update research.dataset_snapshots
   set person_count=v_person_count,
       event_count=v_event_count,
+      model_event_count=v_model_event_count,
       observation_cutoff_date=p_observation_cutoff_date,
       frozen_at=v_frozen_at,
       person_membership_sha256=v_person_sha,
       event_membership_sha256=v_event_sha,
       status='frozen',
       metadata=metadata||jsonb_build_object(
-        'freeze_spec_version','snapshot-freeze-v1',
+        'freeze_spec_version','snapshot-freeze-v2',
         'frozen_person_count',v_person_count,
-        'frozen_event_count',v_event_count
+        'frozen_event_count',v_event_count,
+        'frozen_model_event_count',v_model_event_count
       )
   where id=p_snapshot_id;
 
   return query
-  select p_snapshot_id,v_person_count,v_event_count,v_person_sha,v_event_sha,v_frozen_at;
-end $;
+  select p_snapshot_id,v_person_count,v_event_count,v_model_event_count,v_person_sha,v_event_sha,v_frozen_at;
+end $$;
 
 revoke all on function research.freeze_dataset_snapshot_v1(uuid,date) from public,anon,authenticated;
 grant execute on function research.freeze_dataset_snapshot_v1(uuid,date) to service_role;
