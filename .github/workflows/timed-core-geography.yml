@@ -1,0 +1,54 @@
+name: Timed core geography enrichment
+
+on:
+  push:
+    branches:
+      - "data-run-timed-core-geo*"
+    paths:
+      - "research/acquire/TRIGGER_TIMED_CORE_GEO.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  geo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download frozen fast timed-core artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-enrichment-fast
+          path: prior
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37278193981
+          github-token: ${{ github.token }}
+
+      - name: Restore timed core
+        run: |
+          mkdir -p data/processed/timed
+          CORE=$(find prior -type f -name 'timed_linked_cohort.csv.gz' | head -1)
+          if [ -z "$CORE" ]; then exit 1; fi
+          cp "$CORE" data/processed/timed/timed_linked_cohort.csv.gz
+
+      - name: Standardize birth geography
+        run: >
+          python research/acquire/enrich_timed_core_geography.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/timed_core_geography.csv.gz
+
+      - name: Show report
+        run: cat data/processed/timed/timed_core_geography.report.json
+
+      - name: Upload geography artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-core-geography
+          path: data/processed/timed/
+          retention-days: 30
