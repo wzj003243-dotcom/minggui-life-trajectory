@@ -1,7 +1,7 @@
 name: External adapter probe
 on:
   push:
-    branches: ["data-run-adapter-probe-v1"]
+    branches: ["data-run-adapter-probe*"]
     paths: ["research/acquire/TRIGGER_ADAPTER_PROBE.md"]
 jobs:
   probe:
