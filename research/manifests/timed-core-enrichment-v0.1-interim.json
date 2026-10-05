@@ -1,0 +1,44 @@
+{
+  "dataset_id": "minggui-timed-core-enrichment-v0.1-interim",
+  "status": "partial-but-source-complete-for-wikidata-and-openalex",
+  "source_artifact": {
+    "workflow_run_id": 37272765443,
+    "artifact_id": 11330742270,
+    "artifact_digest": "sha256:7258a5c4da1e499516423db19486ebec9881a7bf77f465cfb646edf65b3ed13c",
+    "note": "Workflow timed out during MusicBrainz enrichment. Music data excluded from this interim report."
+  },
+  "core": {
+    "verified_timed_people": 3076,
+    "structured_wikidata_event_rows": 12510,
+    "openalex_event_rows_complete": 1626,
+    "combined_event_rows": 14136,
+    "people_with_any_event": 1625
+  },
+  "thickness": {
+    "median_events_per_core_person": 1,
+    "p25_events": 0,
+    "p75_events": 4,
+    "p90_events": 13,
+    "people_ge_15_events": 259,
+    "people_ge_4_domains": 96,
+    "people_ge_3_life_stages": 683,
+    "people_ge_2_source_families": 10,
+    "people_meeting_all_strict_thresholds": 4,
+    "thresholds": {
+      "events": 15,
+      "domains": 4,
+      "life_stages": 3,
+      "independent_source_families": 2
+    }
+  },
+  "useful_intersections": {
+    "people_ge15_events_ge4domains_ge3stages": 65,
+    "people_ge15_events_ge3domains_ge3stages": 110,
+    "people_ge10_events_ge3domains_ge3stages": 151
+  },
+  "interpretation": [
+    "Event quantity is no longer the only bottleneck; source diversity and domain breadth are now the main constraints.",
+    "Biography text and MusicBrainz are high-priority because they add independent source families and domains rather than merely more rows.",
+    "Partial/truncated MusicBrainz output is excluded rather than counted."
+  ]
+}
