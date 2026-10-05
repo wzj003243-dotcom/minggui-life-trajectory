@@ -33,10 +33,12 @@
       "relationship.divorce"
     ],
     "family": [
-      "family.child_birth"
+      "family.child_birth",
+      "family.parent_loss"
     ],
     "organization": [
-      "organization.affiliation"
+      "organization.affiliation",
+      "organization.found"
     ],
     "performance": [
       "performance.event"
@@ -45,6 +47,12 @@
       "setback.legal",
       "setback.financial",
       "setback.job_loss"
+    ],
+    "legal": [
+      "legal.arrest",
+      "legal.imprisonment",
+      "legal.conviction",
+      "legal.acquittal"
     ]
   },
   "high_frequency_families": [
@@ -62,7 +70,11 @@
     "career.employer.start": "career.role_start",
     "career.employer.end": "career.role_end",
     "relationship.spouse.start": "relationship.marriage",
-    "relationship.spouse.end": "relationship.divorce"
+    "relationship.spouse.end": "relationship.divorce",
+    "organization.found": "organization.found",
+    "family.parent_loss": "family.parent_loss",
+    "legal.arrest": "legal.arrest",
+    "legal.imprisonment": "legal.imprisonment"
   },
   "principle": "Canonical families are observable state-transition categories. They are not value judgments such as success, destiny, good luck, or failure unless the underlying event itself is objectively a failure event."
 }
