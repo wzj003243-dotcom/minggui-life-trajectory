@@ -120,7 +120,14 @@ def main():
         for key,rows in groups.items():
             first=rows[0];et=(first.get("event_type") or "").strip()
             dom=(first.get("domain") or (et.split(".",1)[0] if "." in et else "") or "other").strip()
-            sources=sorted({source_family(r.get("source_id")) for r in rows})
+            source_set=set()
+            for r in rows:
+                inherited=(r.get("source_families") or "").strip()
+                if inherited:
+                    source_set.update(x for x in inherited.split("|") if x)
+                else:
+                    source_set.add(source_family(r.get("source_id")))
+            sources=sorted(source_set)
             conf=[]
             for r in rows:
                 try:conf.append(float(r.get("confidence") or 0))
