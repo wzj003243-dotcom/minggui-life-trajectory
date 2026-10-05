@@ -3,7 +3,7 @@ name: Seed final timed core to Supabase
 on:
   push:
     branches:
-      - "data-run-final-core-seed-v1"
+      - "data-run-final-core-seed*"
     paths:
       - "research/acquire/TRIGGER_FINAL_CORE_SEED.md"
 
