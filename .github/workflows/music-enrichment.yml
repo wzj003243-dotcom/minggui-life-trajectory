@@ -33,17 +33,17 @@ jobs:
         run: python research/quality/verify_public_sources.py data/raw/acquired
       - name: Normalize BHHT backbone
         run: python research/normalize/public_cohorts.py data/raw/acquired data/processed/music
-      - name: Select balanced 3k cohort
+      - name: Select music-targeted 300 cohort
         run: >
-          python research/cohorts/select_stratified_bhht.py
+          python research/cohorts/select_occupation_targeted.py
           data/processed/music/bhht_core.csv.gz
-          data/processed/music/bhht_stratified_3k.csv.gz
-          --target 3000
-          --min-per-stratum 2
+          data/processed/music/music_targeted_300.csv.gz
+          --keywords "music,singer,musician,composer,songwriter,rapper,dj,vocalist,conductor,instrument"
+          --target 300
       - name: Build Wikidata MusicBrainz bridge
         run: >
           python research/acquire/fetch_wikidata_external_ids.py
-          data/processed/music/bhht_stratified_3k.csv.gz
+          data/processed/music/music_targeted_300.csv.gz
           data/processed/music/musicbrainz_bridge.csv.gz
           --property P434
           --id-column wikidata_code
@@ -51,10 +51,10 @@ jobs:
       - name: Enrich MusicBrainz release and event timelines
         run: >
           python research/acquire/fetch_musicbrainz_events.py
-          data/processed/music/bhht_stratified_3k.csv.gz
+          data/processed/music/music_targeted_300.csv.gz
           data/processed/music/musicbrainz
           --id-column wikidata_code
-          --limit 3000
+          --limit 300
           --mbid-map data/processed/music/musicbrainz_bridge.csv.gz
       - name: Build yearly music state vectors
         run: >
