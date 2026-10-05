@@ -1,0 +1,44 @@
+{
+  "dataset_id": "minggui-timed-core-multisource-v0.2",
+  "status": "frozen-research-snapshot",
+  "workflow": {
+    "run_id": 37280940659,
+    "artifact_id": 11332091633,
+    "artifact_name": "minggui-timed-core-multisource",
+    "artifact_digest": "sha256:508d7456f903590d7748a4514350c8fd02d483c9379b3349f50cb73b0f3015fd",
+    "head_sha": "26aff0299b5c79658b3be7f4bb9896987014625c"
+  },
+  "sources": [
+    "wikidata structured+family",
+    "openalex",
+    "musicbrainz",
+    "wikidata founding",
+    "wikidata notable works"
+  ],
+  "core_people": 3093,
+  "canonical_event_rows": 22533,
+  "people_with_events": 1794,
+  "yearly_state_rows": 49423,
+  "event_count": {
+    "median": 1,
+    "p25": 0,
+    "p75": 6,
+    "p90": 18
+  },
+  "effective_trajectory_points": {
+    "median": 1,
+    "p25": 0,
+    "p75": 6,
+    "p90": 18
+  },
+  "coverage_tiers": {
+    "bronze_or_better_people": 389,
+    "silver_or_better_people": 71,
+    "gold_people": 26,
+    "bronze_rule": ">=8 effective trajectory points, >=3 domains, >=2 life stages, >=1 source family",
+    "silver_rule": ">=15 effective trajectory points, >=4 domains, >=3 life stages, >=2 source families",
+    "gold_rule": ">=25 effective trajectory points, >=5 domains, >=4 life stages, >=2 source families"
+  },
+  "provenance_note": "v0.2 fixes recanonicalization to preserve inherited source_families; the earlier 130 Silver / 49 Gold aggregate was inflated by an 'unknown' pseudo-source and is superseded.",
+  "high_frequency_policy": "papers, music releases, and performances count at most once per person-year-family toward thickness tiers"
+}
