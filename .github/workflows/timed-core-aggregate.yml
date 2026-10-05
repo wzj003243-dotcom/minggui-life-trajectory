@@ -1,0 +1,121 @@
+name: Timed core aggregate
+
+on:
+  push:
+    branches:
+      - "data-run-timed-core-aggregate*"
+    paths:
+      - "research/acquire/TRIGGER_TIMED_CORE_AGGREGATE.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download frozen base core
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-enrichment-fast
+          path: src/base
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37278193981
+          github-token: ${{ github.token }}
+
+      - name: Download family addon
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-family-degree
+          path: src/family
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37274161457
+          github-token: ${{ github.token }}
+
+      - name: Download music addon
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-music-enrichment
+          path: src/music
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37278833653
+          github-token: ${{ github.token }}
+
+      - name: Download founding addon
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-founding
+          path: src/founding
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37274738937
+          github-token: ${{ github.token }}
+
+      - name: Download notable-work addon
+        uses: actions/download-artifact@v4
+        with:
+          name: minggui-timed-core-notable-work
+          path: src/notable
+          repository: wzj003243-dotcom/minggui-life-trajectory
+          run-id: 37274241572
+          github-token: ${{ github.token }}
+
+      - name: Restore canonical source files
+        run: |
+          mkdir -p data/processed/timed
+          find src/base -name 'timed_linked_cohort.csv.gz' -exec cp {} data/processed/timed/timed_linked_cohort.csv.gz \;
+          find src/base -name 'timed_canonical_births.csv.gz' -exec cp {} data/processed/timed/timed_canonical_births.csv.gz \;
+          find src/base -name 'life_events_openalex.csv.gz' -exec cp {} data/processed/timed/life_events_openalex.csv.gz \;
+          find src/family -name 'life_events_structured_family_canonical.csv.gz' -exec cp {} data/processed/timed/life_events_structured_family_canonical.csv.gz \;
+          find src/music -name 'life_events_musicbrainz.csv.gz' -exec cp {} data/processed/timed/life_events_musicbrainz.csv.gz \;
+          find src/founding -name 'life_events_founding.csv.gz' -exec cp {} data/processed/timed/life_events_founding.csv.gz \;
+          find src/notable -name 'life_events_notable_work.csv.gz' -exec cp {} data/processed/timed/life_events_notable_work.csv.gz \;
+          test -s data/processed/timed/timed_linked_cohort.csv.gz
+          test -s data/processed/timed/life_events_structured_family_canonical.csv.gz
+          test -s data/processed/timed/life_events_openalex.csv.gz
+          test -s data/processed/timed/life_events_musicbrainz.csv.gz
+          test -s data/processed/timed/life_events_founding.csv.gz
+          test -s data/processed/timed/life_events_notable_work.csv.gz
+
+      - name: Canonicalize all completed source streams
+        run: >
+          python research/pipeline/canonicalize_lifegraph_events.py
+          data/processed/timed/life_events_canonical_multisource.csv.gz
+          data/processed/timed/life_events_structured_family_canonical.csv.gz
+          data/processed/timed/life_events_openalex.csv.gz
+          data/processed/timed/life_events_musicbrainz.csv.gz
+          data/processed/timed/life_events_founding.csv.gz
+          data/processed/timed/life_events_notable_work.csv.gz
+
+      - name: Measure multisource thickness
+        run: >
+          python research/quality/lifegraph_coverage_report.py
+          data/processed/timed/core_lifegraph_coverage_multisource.json
+          data/processed/timed/life_events_canonical_multisource.csv.gz
+          --cohort data/processed/timed/timed_linked_cohort.csv.gz
+          --cohort-id-column wikidata_id
+
+      - name: Build multisource yearly states
+        run: >
+          python research/pipeline/build_lifegraph_year_states.py
+          data/processed/timed/life_events_canonical_multisource.csv.gz
+          data/processed/timed/core_year_states_multisource.csv.gz
+
+      - name: Show reports
+        run: |
+          cat data/processed/timed/life_events_canonical_multisource.report.json
+          cat data/processed/timed/core_lifegraph_coverage_multisource.json
+          cat data/processed/timed/core_year_states_multisource.report.json
+
+      - name: Upload aggregate
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-timed-core-multisource
+          path: data/processed/timed/
+          retention-days: 30
