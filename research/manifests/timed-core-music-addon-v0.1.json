@@ -1,0 +1,50 @@
+{
+  "dataset_id": "minggui-timed-core-music-addon-v0.1",
+  "status": "frozen-research-snapshot",
+  "workflow": {
+    "run_id": 37278833653,
+    "artifact_id": 11331374639,
+    "artifact_name": "minggui-timed-core-music-enrichment",
+    "artifact_digest": "sha256:689ada326884288aed964d421f50165e1a9a2388b04cddd5b481e23e1ebd8b60",
+    "head_sha": "422396c697ed42fc7dd7f0e3d9da70899036134a"
+  },
+  "selection": {
+    "p434_core_people": 760,
+    "selected_high_leverage_people": 250,
+    "note": "This first run used the pre-tightening selector and included one already-Gold person; future runs exclude people with >=2 source systems."
+  },
+  "musicbrainz": {
+    "single_mbid_people": 246,
+    "dated_event_people": 163,
+    "dated_event_rows_raw": 5528,
+    "lifegraph_event_rows": 5527,
+    "release_group_events": 4859,
+    "performance_events": 669,
+    "person_failures": 2
+  },
+  "effective_thickness_before": {
+    "bronze": 191,
+    "silver": 4,
+    "gold": 2,
+    "people_ge2_source_systems": 11,
+    "people_ge4_domains": 97,
+    "people_ge3_life_stages": 676
+  },
+  "effective_thickness_after": {
+    "bronze": 270,
+    "silver": 52,
+    "gold": 14,
+    "people_ge2_source_systems": 172,
+    "people_ge4_domains": 145,
+    "people_ge3_life_stages": 713
+  },
+  "tier_transitions": {
+    "thin->bronze": 53,
+    "thin->silver": 26,
+    "bronze->silver": 10,
+    "bronze->gold": 12,
+    "total_people_with_tier_upgrade": 101
+  },
+  "effective_point_policy": "Music releases and performances contribute at most one generic trajectory point per person-year-family; raw records remain available for specialized music state vectors.",
+  "interpretation": "MusicBrainz materially improves source-system diversity, creation/performance domain coverage, and strict LifeGraph thickness in the timed core."
+}
