@@ -30,6 +30,7 @@ def event_family(event_type,domain):
     rules=[
       ("education.complete",("graduat","education.complete","degree.complete")),
       ("education.start",("education.start","enroll","education.affiliation.start")),
+      ("education.degree",("education.degree",)),
       ("education.affiliation",("education.affiliation",)),
       ("career.role_start",("career.position.start","career.employer.start","career.role_start","career.appointment")),
       ("career.role_end",("career.position.end","career.employer.end","career.retirement","career.role_end")),
@@ -37,6 +38,7 @@ def event_family(event_type,domain):
       ("migration.move",("migration.residence","migration.cross_region","emigrat","immigrat","relocat")),
       ("creation.scholar_output",("creation.scholar_work",)),
       ("creation.music_output",("creation.music_release_group",)),
+      ("creation.notable_work",("creation.notable_work",)),
       ("creation.publication",("creation.publication","creation.release")),
       ("creation.founding",("creation.founded",)),
       ("creation.discovery",("creation.discovery","creation.invention")),
@@ -44,6 +46,7 @@ def event_family(event_type,domain):
       ("recognition.election",("recognition.election",)),
       ("relationship.marriage",("relationship.marriage","relationship.spouse.start","relationship.spouse")),
       ("relationship.divorce",("relationship.divorce","relationship.spouse.end")),
+      ("family.child_birth",("family.child_birth",)),
       ("organization.affiliation",("organization.member","organization.affiliation","organization.party")),
       ("performance.event",("performance.music_event",)),
       ("setback.legal",("setback.arrest","setback.imprisonment")),
