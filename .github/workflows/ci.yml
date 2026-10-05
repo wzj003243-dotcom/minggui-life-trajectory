@@ -36,3 +36,7 @@ jobs:
         run: python research/tests/smoke_pipeline.py
       - name: Smoke test event normalization pipeline
         run: python research/tests/smoke_event_pipeline.py
+      - name: Install biography parser dependency
+        run: pip install mwparserfromhell==0.7.2
+      - name: Smoke test biography parser
+        run: python research/tests/smoke_biography_parser.py
