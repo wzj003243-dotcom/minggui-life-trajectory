@@ -1,0 +1,106 @@
+name: Final identity from frozen cache
+
+on:
+  push:
+    branches:
+      - "data-run-final-identity-cache*"
+    paths:
+      - "research/acquire/TRIGGER_FINAL_IDENTITY_CACHE.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download frozen timed-core artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11330742270/zip" \
+            -o artifact.zip
+          mkdir artifact
+          unzip -q artifact.zip -d artifact
+          find artifact -type f | sort | sed -n '1,160p'
+
+      - name: Locate frozen inputs
+        run: |
+          python - <<'PY'
+          import pathlib,shutil
+          needed={
+            "astro_public_births.csv.gz":"data/processed/timed/astro_public_births.csv.gz",
+            "adb_wikidata_links.csv.gz":"data/processed/timed/adb_wikidata_links.csv.gz",
+            "bazi_features_timed.csv.gz":"data/processed/timed/bazi_features_timed.csv.gz",
+          }
+          for name,dst in needed.items():
+              hits=list(pathlib.Path("artifact").rglob(name))
+              if not hits:
+                  raise SystemExit(f"missing {name}")
+              pathlib.Path(dst).parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(hits[0],dst)
+              print(name,"<-",hits[0])
+          PY
+
+      - name: Lossless identity validation only
+        run: >
+          python research/quality/validate_adb_wikidata_identity.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_links.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          data/processed/timed/adb_wikidata_identity_validation.csv.gz
+          --batch-size 20
+          --sleep 0.20
+
+      - name: Require zero API loss
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("data/processed/timed/adb_wikidata_identity_validation.report.json"))
+          print(json.dumps(r,indent=2))
+          if r.get("api_failure_qids") != 0:
+              raise SystemExit(f"api_failure_qids={r.get('api_failure_qids')}")
+          PY
+
+      - name: Build final verified core
+        run: >
+          python research/pipeline/build_timed_linked_cohort.py
+          data/processed/timed/astro_public_births.csv.gz
+          data/processed/timed/adb_wikidata_identity_validation.csv.gz
+          data/processed/timed/bazi_features_timed.csv.gz
+          data/processed/timed/timed_linked_cohort.csv.gz
+
+      - name: Build canonical births
+        run: >
+          python research/pipeline/timed_linked_to_canonical_births.py
+          data/processed/timed/timed_linked_cohort.csv.gz
+          data/processed/timed/timed_canonical_births.csv.gz
+
+      - name: Final summary
+        run: |
+          cat data/processed/timed/adb_wikidata_identity_validation.report.json
+          cat data/processed/timed/timed_linked_cohort.report.json
+          cat data/processed/timed/timed_canonical_births.report.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: minggui-final-lossless-identity-core
+          path: |
+            data/processed/timed/timed_linked_cohort.csv.gz
+            data/processed/timed/timed_linked_cohort.report.json
+            data/processed/timed/timed_canonical_births.csv.gz
+            data/processed/timed/timed_canonical_births.report.json
+            data/processed/timed/adb_wikidata_identity_validation.csv.gz
+            data/processed/timed/adb_wikidata_identity_validation.report.json
+          retention-days: 30
