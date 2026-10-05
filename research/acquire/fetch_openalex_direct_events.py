@@ -4,9 +4,10 @@ This complements the ORCID path. It performs no name matching. The input bridge 
 fetch_wikidata_external_ids.py --property P10283 and must map a person QID to an OpenAlex A-id.
 """
 from __future__ import annotations
-import argparse,csv,gzip,json
+import argparse,csv,gzip,json,sys
 from collections import defaultdict
 from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from research.acquire.fetch_openalex_academic_events import OA,get_json,work_pages,author_affiliation,read_qids
 
 def read_bridge(path,allowed):
