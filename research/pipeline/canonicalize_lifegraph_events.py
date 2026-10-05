@@ -40,7 +40,7 @@ def event_family(event_type,domain):
       ("creation.music_output",("creation.music_release_group",)),
       ("creation.notable_work",("creation.notable_work",)),
       ("creation.publication",("creation.publication","creation.release")),
-      ("creation.founding",("creation.founded",)),
+      ("creation.founding",("creation.founded","creation.organization_founded")),
       ("creation.discovery",("creation.discovery","creation.invention")),
       ("recognition.award",("recognition.award",)),
       ("recognition.election",("recognition.election",)),
