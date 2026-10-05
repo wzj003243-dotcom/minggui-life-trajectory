@@ -153,6 +153,15 @@ jobs:
           data/processed/timed/life_events_musicbrainz.csv.gz
           data/processed/timed/musicbrainz/music_events.csv.gz
 
+      - name: Build cross-source yearly LifeGraph states
+        run: >
+          python research/pipeline/build_lifegraph_year_states.py
+          data/processed/timed/life_events_wikidata.csv.gz
+          data/processed/timed/core_year_states.csv.gz
+          --additional-events
+          data/processed/timed/life_events_openalex.csv.gz
+          data/processed/timed/life_events_musicbrainz.csv.gz
+
       - name: Measure core LifeGraph thickness
         run: >
           python research/quality/lifegraph_coverage_report.py
