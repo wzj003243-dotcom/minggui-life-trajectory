@@ -11,41 +11,18 @@
   "core": {
     "verified_timed_people": 3093,
     "canonical_event_rows": 14348,
-    "people_with_events": 1645,
-    "wikidata_plus_openalex_only": true
+    "event_count_median": 1,
+    "event_count_p25": 0,
+    "event_count_p75": 4,
+    "event_count_p90": 13
   },
-  "openalex": {
-    "people_with_wikidata_orcid": 16,
-    "exact_openalex_authors": 11,
-    "scholarly_event_rows": 1744,
-    "p10283_verified_authors": 0
+  "coverage_tiers": {
+    "bronze_people": 191,
+    "silver_people": 4,
+    "gold_people": 2,
+    "bronze_rule": ">=8 events, >=3 domains, >=2 life stages, >=1 source family",
+    "silver_rule": ">=15 events, >=4 domains, >=3 life stages, >=2 source families",
+    "gold_rule": ">=25 events, >=5 domains, >=4 life stages, >=2 source families"
   },
-  "thickness_effective_metric": {
-    "high_frequency_rule": "papers/music releases/performances contribute at most one effective trajectory point per person-year-family",
-    "raw_event_count": {
-      "median": 1,
-      "p25": 0,
-      "p75": 4,
-      "p90": 13
-    },
-    "effective_trajectory_points": {
-      "median": 1,
-      "p25": 0,
-      "p75": 4,
-      "p90": 13
-    },
-    "people_ge15_effective_points": 263,
-    "people_ge4_domains": 97,
-    "people_ge3_life_stages": 676,
-    "people_ge2_source_families": 11,
-    "bronze_or_better_people": 191,
-    "silver_or_better_people": 4,
-    "gold_people": 2
-  },
-  "tier_rules": {
-    "bronze": ">=8 effective points, >=3 domains, >=2 life stages, >=1 source family",
-    "silver": ">=15 effective points, >=4 domains, >=3 life stages, >=2 source families",
-    "gold": ">=25 effective points, >=5 domains, >=4 life stages, >=2 source families"
-  },
-  "next_priority": "Add independent Biography and MusicBrainz evidence to high-leverage single-source people."
+  "purpose": "Stable pre-Biography baseline for measuring enrichment lift on the same verified timed people."
 }
