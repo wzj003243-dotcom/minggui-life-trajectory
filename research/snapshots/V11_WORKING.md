@@ -44,3 +44,43 @@ The old v1.0 biography artifact covered only a selected 300-person subset. The p
 Each shard preserves raw revision-pinned wikitext, date-bearing timeline candidates, precision-first rule events, extraction reports, and source provenance.
 
 No shard is imported into v1.0.
+
+
+## Baseline snapshot facts
+
+The v1.1 working snapshot also contains an exact baseline copy of all **3,398** frozen `person_snapshot_facts` rows from v1.0, including birth/death facts and frozen geography fields. These copies are tagged with:
+
+- `inherited_from_snapshot = 42628250-3a51-4b92-b4bd-12c7dec846a8`
+- `inheritance_mode = baseline-copy`
+
+This keeps v1.1 self-contained for enrichment age checks and later audits. New corrections, if any, must be explicit v1.1 changes rather than edits to v1.0.
+
+## Authorized shard imports
+
+v1.1 external artifacts are imported through the private `research.artifact_import_authorizations` allowlist.
+
+An import is accepted only when all of the following match an approved row:
+
+- importer key,
+- provider,
+- provider artifact ID,
+- exact SHA-256,
+- target snapshot.
+
+The biography importer is `minggui-v11-biography-import` and targets only:
+
+`7fce3b79-ebfc-40b2-a5f0-e91b28db6a02`
+
+The Edge Function remains JWT-required except for the short, explicit GitHub Actions import window. Exact ZIPs are archived in private Storage.
+
+## Freeze gate
+
+Do not canonicalize or freeze v1.1 until all planned biography shards have been:
+
+1. downloaded successfully;
+2. SHA-pinned;
+3. archived;
+4. imported with raw candidates preserved;
+5. audited for shard overlap, identity misses, invalid/pre-birth events, and source revision completeness.
+
+Only then recompute canonical events, membership hashes, counts, eligibility, and a new training dataset.
