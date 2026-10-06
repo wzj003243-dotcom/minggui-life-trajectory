@@ -31,6 +31,7 @@ declare
   v_bad_prebirth integer;
   v_multi_active_wiki_revision_people integer;
   v_bad_supersession integer;
+  v_expected_auth integer;
   v_auth_count integer;
   v_pending_auth integer;
   v_parent_people_hash text;
@@ -142,6 +143,15 @@ begin
     raise exception 'v1.1 has % superseded events still marked active',v_bad_supersession;
   end if;
 
+  select nullif(metadata->>'v11_biography_expected_artifacts','')::int
+  into v_expected_auth
+  from research.dataset_snapshots
+  where id=v_snapshot;
+
+  if v_expected_auth not in (4,8) then
+    raise exception 'v1.1 expected biography artifact count missing/invalid: %',v_expected_auth;
+  end if;
+
   select
     count(*)::int,
     count(*) filter(where status<>'imported')::int
@@ -151,8 +161,8 @@ begin
     and provider='github-actions'
     and target_snapshot_id=v_snapshot;
 
-  if v_auth_count<>4 then
-    raise exception 'v1.1 requires exactly four imported biography source artifacts; found %',v_auth_count;
+  if v_auth_count<>v_expected_auth then
+    raise exception 'v1.1 biography source artifact count mismatch: found %, expected %',v_auth_count,v_expected_auth;
   end if;
 
   if v_pending_auth<>0 then
