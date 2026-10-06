@@ -1,0 +1,121 @@
+name: Import v1.1 biography shards
+
+on:
+  push:
+    branches:
+      - "data-run-import-v11-biography*"
+    paths:
+      - "research/snapshots/v11-biography-import-control.json"
+      - "research/import/TRIGGER_V11_BIOGRAPHY_IMPORT.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read frozen import control
+        id: ctl
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path("research/snapshots/v11-biography-import-control.json")
+          ctl=json.loads(p.read_text())
+          assert ctl["target_snapshot_id"]=="7fce3b79-ebfc-40b2-a5f0-e91b28db6a02"
+          assert len(ctl["shards"])==4
+          assert {int(x["shard"]) for x in ctl["shards"]}=={0,1,2,3}
+          print(json.dumps(ctl,indent=2))
+          with open("/tmp/source_run","w") as f:f.write(str(ctl["source_workflow_run_id"]))
+          with open("/tmp/audit_run","w") as f:f.write(str(ctl["audit_workflow_run_id"]))
+          PY
+
+      - name: Download union audit and authorized chunks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data/v11-audit
+          gh run download "$(cat /tmp/audit_run)" \
+            --repo "${{ github.repository }}" \
+            --name "minggui-v11-biography-union-audit" \
+            --dir data/v11-audit
+          test -f data/v11-audit/import-chunks/import-manifest.json
+          test -f data/v11-audit/v11-biography-audit.json
+
+      - name: Verify control against audit manifest
+        run: |
+          python - <<'PY'
+          import json
+          ctl=json.load(open("research/snapshots/v11-biography-import-control.json"))
+          audit=json.load(open("data/v11-audit/v11-biography-audit.json"))
+          manifest=json.load(open("data/v11-audit/import-chunks/import-manifest.json"))
+          assert audit["status"]=="pass", audit
+          assert str(manifest["source_workflow_run_id"])==str(ctl["source_workflow_run_id"])
+          assert manifest["target_snapshot_id"]==ctl["target_snapshot_id"]
+          for x in ctl["shards"]:
+              s=str(int(x["shard"]))
+              m=manifest["shards"][s]
+              assert str(m["provider_artifact_id"])==str(x["artifact_id"]),(s,m,x)
+              assert m["source_artifact_sha256"]==x["sha256"],(s,m,x)
+          print("control manifest matches audited source artifacts")
+          PY
+
+      - name: Import exact source ZIPs and chunks sequentially
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENDPOINT: https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-v11-biography-chunk-import
+        run: |
+          set -euo pipefail
+          for shard in 0 1 2 3; do
+            aid=$(python -c "import json; c=json.load(open('research/snapshots/v11-biography-import-control.json')); print([x for x in c['shards'] if int(x['shard'])==$shard][0]['artifact_id'])")
+            sha=$(python -c "import json; c=json.load(open('research/snapshots/v11-biography-import-control.json')); print([x for x in c['shards'] if int(x['shard'])==$shard][0]['sha256'])")
+
+            echo "Downloading exact source artifact shard=$shard id=$aid"
+            curl -L --fail-with-body \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$aid/zip" \
+              -o "source-$shard.zip"
+            echo "$sha  source-$shard.zip" | sha256sum -c -
+
+            curl -L --fail-with-body --max-time 150 \
+              -X POST -H "Content-Type: application/zip" \
+              --data-binary @"source-$shard.zip" \
+              "$ENDPOINT?mode=archive&artifact_id=$aid" \
+              -o "archive-$shard.json"
+            python -c "import json; p=json.load(open('archive-$shard.json')); assert p.get('ok'), p; print(p)"
+
+            base="data/v11-audit/import-chunks/shard-$shard"
+
+            run_chunk () {
+              file="$1"
+              rel="shard-$shard/$(basename "$file")"
+              enc=$(python -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1],safe=''))" "$rel")
+              echo "Importing $rel"
+              curl -L --fail-with-body --max-time 150 \
+                -X POST -H "Content-Type: application/json" \
+                --data-binary @"$file" \
+                "$ENDPOINT?mode=chunk&artifact_id=$aid&chunk_name=$enc" \
+                -o /tmp/chunk-result.json
+              python -c "import json; p=json.load(open('/tmp/chunk-result.json')); assert p.get('ok'), p; print(p)"
+            }
+
+            run_chunk "$base/prepare.json"
+            for file in "$base"/candidates-*.json; do
+              [ -e "$file" ] || continue
+              run_chunk "$file"
+            done
+            for file in "$base"/events-*.json; do
+              [ -e "$file" ] || continue
+              run_chunk "$file"
+            done
+            run_chunk "$base/finalize.json"
+          done
+
+      - name: Record completion
+        run: echo "All four v1.1 biography shard imports returned success."
