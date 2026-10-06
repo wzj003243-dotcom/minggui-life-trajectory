@@ -224,12 +224,12 @@ Deno.serve(async(req)=>{
       }
     }
 
-    await q("with r as (select id from research.model_runs where run_key like 'final-v1-r3-'+$1+'-hgb-%') update research.model_runs set config=(config #>> '{}')::jsonb where id in (select id from r) and jsonb_typeof(config)='string'",[approved.scenario]);
-    await q("with r as (select id from research.model_runs where run_key like 'final-v1-r3-'+$1+'-hgb-%') update research.model_runs set environment=(environment #>> '{}')::jsonb where id in (select id from r) and jsonb_typeof(environment)='string'",[approved.scenario]);
-    await q("with r as (select id from research.model_runs where run_key like 'final-v1-r3-'+$1+'-hgb-%') update research.model_metrics set details=(details #>> '{}')::jsonb where run_id in (select id from r) and jsonb_typeof(details)='string'",[approved.scenario]);
-    await q("with r as (select id from research.model_runs where run_key like 'final-v1-r3-'+$1+'-hgb-%') update research.model_predictions set probabilities=(probabilities #>> '{}')::jsonb where run_id in (select id from r) and jsonb_typeof(probabilities)='string'",[approved.scenario]);
-    await q("with r as (select id from research.model_runs where run_key like 'final-v1-r3-'+$1+'-hgb-%') update research.model_predictions set metadata=(metadata #>> '{}')::jsonb where run_id in (select id from r) and jsonb_typeof(metadata)='string'",[approved.scenario]);
-    await q("with r as (select id from research.model_runs where run_key like 'final-v1-r3-'+$1+'-hgb-%') update research.model_artifacts set metadata=(metadata #>> '{}')::jsonb where run_id in (select id from r) and jsonb_typeof(metadata)='string'",[approved.scenario]);
+    await q("with r as (select id from research.model_runs where run_key like $1) update research.model_runs set config=(config #>> '{}')::jsonb where id in (select id from r) and jsonb_typeof(config)='string'",["final-v1-r3-"+approved.scenario+"-hgb-%"]);
+    await q("with r as (select id from research.model_runs where run_key like $1) update research.model_runs set environment=(environment #>> '{}')::jsonb where id in (select id from r) and jsonb_typeof(environment)='string'",["final-v1-r3-"+approved.scenario+"-hgb-%"]);
+    await q("with r as (select id from research.model_runs where run_key like $1) update research.model_metrics set details=(details #>> '{}')::jsonb where run_id in (select id from r) and jsonb_typeof(details)='string'",["final-v1-r3-"+approved.scenario+"-hgb-%"]);
+    await q("with r as (select id from research.model_runs where run_key like $1) update research.model_predictions set probabilities=(probabilities #>> '{}')::jsonb where run_id in (select id from r) and jsonb_typeof(probabilities)='string'",["final-v1-r3-"+approved.scenario+"-hgb-%"]);
+    await q("with r as (select id from research.model_runs where run_key like $1) update research.model_predictions set metadata=(metadata #>> '{}')::jsonb where run_id in (select id from r) and jsonb_typeof(metadata)='string'",["final-v1-r3-"+approved.scenario+"-hgb-%"]);
+    await q("with r as (select id from research.model_runs where run_key like $1) update research.model_artifacts set metadata=(metadata #>> '{}')::jsonb where run_id in (select id from r) and jsonb_typeof(metadata)='string'",["final-v1-r3-"+approved.scenario+"-hgb-%"]);
     await q("update research.artifact_registry set metadata=(metadata #>> '{}')::jsonb where provider_artifact_id=$1 and jsonb_typeof(metadata)='string'",[approved.artifactId]);
 
     await sql.end({timeout:5});
