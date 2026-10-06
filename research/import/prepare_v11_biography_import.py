@@ -1,4 +1,4 @@
-"""Prepare small, hash-addressed v1.1 biography import payloads.
+"""Prepare small, hash-addressed v1.1 biography import payloads from 4 or 8 shards.
 
 This runs only after the four raw shard artifacts pass union audit. The source artifacts
 remain the evidence of record. These payloads are deterministic transport chunks for the
@@ -98,7 +98,7 @@ def main() -> None:
             raise ValueError(f"cannot identify shard from {path}")
         zips[int(m.group(1))] = path
     if set(zips) != set(expected_shards):
-        raise ValueError(f"expected four shard zips, got {sorted(zips)}")
+        raise ValueError(f"expected {args.expected_shards} shard zips, got {sorted(zips)}")
 
     manifest: dict = {
         "version": "v11-biography-import-chunks-v1",
@@ -111,7 +111,11 @@ def main() -> None:
     }
 
     for shard in expected_shards:
-        artifact_name = f"minggui-v11-biography-shard-{shard}"
+        artifact_name = (
+            f"minggui-v11-biography-shard-{shard}"
+            if args.expected_shards == 4
+            else f"minggui-v11-biography8-shard-{shard}"
+        )
         meta = by_name.get(artifact_name)
         if not meta:
             raise ValueError(f"GitHub artifact metadata missing {artifact_name}")
