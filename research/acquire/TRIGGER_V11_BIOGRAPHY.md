@@ -1,0 +1,1 @@
+# Trigger v1.1 biography enrichment\n\nFetch the full verified 3,398-person cohort in four deterministic Wikipedia biography shards for v1.1-working.\n
