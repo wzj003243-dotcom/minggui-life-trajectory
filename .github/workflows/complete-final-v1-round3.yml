@@ -1,0 +1,85 @@
+name: Complete final v1 round3 prediction import
+
+on:
+  push:
+    branches:
+      - "data-run-complete-final-v1-round3*"
+    paths:
+      - "research/training/TRIGGER_COMPLETE_FINAL_V1_ROUND3.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  import-predictions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Download exact round3 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11392340286/zip" \
+            -o round3.zip
+          echo "5344a9c993602c29ced4c6453ccee4bd78f782046b2f08b1374619c2a451c293  round3.zip" | sha256sum -c -
+          unzip -p round3.zip round3-results/predictions.csv.gz > predictions.csv.gz
+          echo "5e170c9e29cf6030a62db122ce42fb9dcae7543c2eb48607fd83ea7040a57067  predictions.csv.gz" | sha256sum -c -
+      - name: Build deterministic prediction chunks
+        run: |
+          python - <<'PY'
+          import csv,gzip,hashlib,json,io,pathlib
+          expected={"forward_era_v1__bazi_decade_shuffle_placebo_v1.csv.gz":"175008e8670824efabc3e5774ada638fc33c796663b2e34bf8e97505de7db08f","forward_era_v1__bazi_objective_only_v1.csv.gz":"9989153c7eef8268be424bfd7f45709e56e5b63e115cdfaf7e531e5ac8d23597","forward_era_v1__history_plus_bazi_v1.csv.gz":"7ac510f761f607f859bd6565987137582d87f81d34fc06d2d1d6734f51517f89","forward_era_v1__history_reality_v1.csv.gz":"c1731deff5d119a07a6c8cc1aecdf2656491076ccb5fc31be00cc53d43f3befa","forward_era_v1__raw_birth_calendar_v1.csv.gz":"b6ea9c65ee1244ea9cdb69f6082670ca62f28f7aee30004e9dee0bf7d2c4cdde","geo_france_holdout_v1__bazi_decade_shuffle_placebo_v1.csv.gz":"48c52a6dad29a504269c897548ed181bb5a7c992c55e8d2ac6cdf5d2bfcf20c3","geo_france_holdout_v1__bazi_objective_only_v1.csv.gz":"f3070cee247935630e513ad16b2d7d86ef98641ff5ea0d75ac42b0647aca8083","geo_france_holdout_v1__history_plus_bazi_v1.csv.gz":"240380824356600e284f5b09e451748b9825c8e57c3aae2a3ac868a09cb1a253","geo_france_holdout_v1__history_reality_v1.csv.gz":"ada394cb58240d58f03e4807547b8f26d85679c7762efd3fd3e38122066cea81","geo_france_holdout_v1__raw_birth_calendar_v1.csv.gz":"6473cc133efef4c9ad4ed1c6b42ac630bceda3dd2762341508e41c750932dbb5","geo_us_holdout_v1__bazi_decade_shuffle_placebo_v1.csv.gz":"6071445d74ad4c4a0eeec7a0dbfb016dd07517978efb9b95dace7a1c94ede9b7","geo_us_holdout_v1__bazi_objective_only_v1.csv.gz":"437dc455f2946e1721ab10394105815c7027cded837196c50149e30370b425df","geo_us_holdout_v1__history_plus_bazi_v1.csv.gz":"8e1cc7776d9cae42a6bb7919a9523ce07acc44aa068a5dd926067a6f2542eb34","geo_us_holdout_v1__history_reality_v1.csv.gz":"b50cc62304aa0a0fc906600b48b685ccafd01bfdf233dbf252c22e76361f94f5","geo_us_holdout_v1__raw_birth_calendar_v1.csv.gz":"0257c261fe24a59319339bf804ffd39f1a7ebe174da344bfc9cfe9cae23671fa"}
+          with gzip.open("predictions.csv.gz","rt",newline="") as f:
+              rows=list(csv.DictReader(f))
+          fields=list(rows[0].keys())
+          groups={}
+          for r in rows:
+              key=(r["scenario_key"],r["feature_variant"])
+              groups.setdefault(key,[]).append(r)
+          out=pathlib.Path("pred_chunks")
+          out.mkdir(exist_ok=True)
+          seen={}
+          for (sc,var),rs in sorted(groups.items()):
+              sio=io.StringIO(newline="")
+              w=csv.DictWriter(sio,fieldnames=fields,lineterminator="\n")
+              w.writeheader()
+              w.writerows(rs)
+              data=gzip.compress(sio.getvalue().encode("utf-8"),compresslevel=9,mtime=0)
+              name=f"{sc}__{var}.csv.gz"
+              (out/name).write_bytes(data)
+              sha=hashlib.sha256(data).hexdigest()
+              if expected.get(name)!=sha:
+                  raise SystemExit(f"sha mismatch {name}: {sha} != {expected.get(name)}")
+              seen[name]=sha
+          if seen!=expected:
+              raise SystemExit("chunk manifest mismatch")
+          print(json.dumps(seen,indent=2))
+          PY
+      - name: Import exact prediction chunks
+        run: |
+          set -euo pipefail
+          for f in pred_chunks/*.csv.gz; do
+            echo "importing $f"
+            curl -L --fail-with-body --max-time 300 \
+              -X POST \
+              -H "Content-Type: application/gzip" \
+              --data-binary @"$f" \
+              "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-round3-prediction-chunk-import" \
+              | tee chunk-result.json
+            python - <<'PY'
+          import json
+          p=json.load(open("chunk-result.json"))
+          if not p.get("ok"):
+              raise SystemExit(p)
+          print(p)
+          PY
+          done
