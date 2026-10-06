@@ -74,6 +74,15 @@ def main() -> None:
         with open_zip(path) as z:
             report = json_obj(z, re.compile(r"(^|/)shard-\d+\.report\.json$"))
             shard = int(report["shard"])
+            fetch_candidates = [
+                n for n in z.namelist()
+                if re.search(r"(^|/)(?:new-)?biographies-shard-\d+\.report\.json$", n)
+            ]
+            if len(fetch_candidates) > 1:
+                raise ValueError(f"{z.filename}: multiple biography fetch reports: {fetch_candidates}")
+            fetch_reports[shard] = (
+                json.loads(z.read(fetch_candidates[0])) if fetch_candidates else {}
+            )
             fetch_report = json_obj(
                 z,
                 re.compile(r"biographies-shard-\d+\.report\.json$"),
@@ -114,6 +123,20 @@ def main() -> None:
             errors.append(f"shard {shard}: candidate report mismatch")
         if int(rep.get("rule_event_rows", -1)) != len(rules):
             errors.append(f"shard {shard}: rule-event report mismatch")
+
+        fetch_rep = fetch_reports.get(shard) or {}
+        resolved = int(fetch_rep.get("resolved_sitelinks", len(bios)) or 0)
+        fetched = int(fetch_rep.get("biographies_fetched", len(bios)) or 0)
+        if resolved > fetched:
+            errors.append(
+                f"shard {shard}: resolved_sitelinks exceeds biographies_fetched "
+                f"({resolved} > {fetched}); revision fetch is incomplete"
+            )
+        if fetched > len(bios):
+            errors.append(
+                f"shard {shard}: fetch report exceeds final biography rows "
+                f"({fetched} > {len(bios)})"
+            )
 
         fetch_rep = fetch_reports[shard]
         failed_fetch = int(fetch_rep.get("failed_fetch_qids", 0) or 0)
