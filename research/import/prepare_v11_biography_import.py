@@ -80,6 +80,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--artifact-metadata", type=Path, required=True)
     ap.add_argument("--source-run-id", required=True)
+    ap.add_argument("--source-git-sha", required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("artifacts", nargs="+", type=Path)
     args = ap.parse_args()
@@ -101,6 +102,7 @@ def main() -> None:
     manifest: dict = {
         "version": "v11-biography-import-chunks-v1",
         "source_workflow_run_id": str(args.source_run_id),
+        "source_git_sha": str(args.source_git_sha),
         "target_snapshot_id": "7fce3b79-ebfc-40b2-a5f0-e91b28db6a02",
         "importer_key": "v11-biography-shard-v1",
         "shards": {},
@@ -160,6 +162,7 @@ def main() -> None:
             "source_artifact_id": source_id,
             "source_artifact_sha256": source_sha,
             "source_workflow_run_id": str(args.source_run_id),
+            "source_git_sha": str(args.source_git_sha),
             "target_snapshot_id": "7fce3b79-ebfc-40b2-a5f0-e91b28db6a02",
         }
         rows: list[dict] = []
@@ -213,13 +216,51 @@ def main() -> None:
 
     manifest_bytes = canonical_json_bytes(manifest)
     (args.out / "import-manifest.json").write_bytes(manifest_bytes)
+    manifest_sha = sha256_bytes(manifest_bytes)
     (args.out / "import-manifest.sha256").write_text(
-        sha256_bytes(manifest_bytes) + "  import-manifest.json\n",
+        manifest_sha + "  import-manifest.json\n",
         encoding="utf-8",
     )
 
+    sql_lines = [
+        "-- Generated from audited v1.1 biography artifacts.",
+        "-- Apply only after v11-biography-audit.json reports status=pass.",
+        "begin;",
+    ]
+    for shard, info in sorted(manifest["shards"].items(), key=lambda kv: int(kv[0])):
+        chunk_map = {x["chunk_name"]: x["sha256"] for x in info["chunks"]}
+        metadata_obj = {
+            "shard": int(shard),
+            "source_workflow_run_id": str(args.source_run_id),
+            "source_git_sha": str(args.source_git_sha),
+            "source_artifact_size_bytes": int(info["source_artifact_size_bytes"]),
+            "import_manifest_sha256": manifest_sha,
+            "import_chunks": chunk_map,
+        }
+        metadata_json = (
+            json.dumps(metadata_obj, ensure_ascii=False, sort_keys=True)
+            .replace("'", "''")
+        )
+        artifact_id = str(info["provider_artifact_id"]).replace("'", "''")
+        source_sha = str(info["source_artifact_sha256"]).replace("'", "''")
+        sql_lines.append(
+            "insert into research.artifact_import_authorizations("
+            "importer_key,provider,provider_artifact_id,sha256,target_snapshot_id,status,metadata"
+            ") values("
+            "'v11-biography-shard-v1','github-actions','" + artifact_id + "','" + source_sha + "',"
+            "'7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid,'approved','" + metadata_json + "'::jsonb"
+            ") on conflict(importer_key,provider,provider_artifact_id) do update set "
+            "sha256=excluded.sha256,target_snapshot_id=excluded.target_snapshot_id,"
+            "status=case when research.artifact_import_authorizations.status='imported' then 'imported' else 'approved' end,"
+            "metadata=research.artifact_import_authorizations.metadata||excluded.metadata;"
+        )
+    sql_lines += ["commit;", ""]
+    (args.out / "artifact-authorizations.sql").write_text(
+        "\n".join(sql_lines), encoding="utf-8"
+    )
+
     summary = {
-        "manifest_sha256": sha256_bytes(manifest_bytes),
+        "manifest_sha256": manifest_sha,
         "shards": {
             k: {
                 "artifact_id": v["provider_artifact_id"],
