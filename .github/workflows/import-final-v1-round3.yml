@@ -27,10 +27,10 @@ jobs:
             artifact_id: "11393842460"
             sha256: "0b2932d341c169f5eecec3102d69820b0d9f828530dfbec9353851268ccc4061"
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Download exact ${{ matrix.scenario }} artifact
+      - name: Download exact Round 3 artifact
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -41,9 +41,9 @@ jobs:
             "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/${{ matrix.artifact_id }}/zip" \
             -o round3.zip
           echo "${{ matrix.sha256 }}  round3.zip" | sha256sum -c -
-      - name: Import ${{ matrix.scenario }}
+      - name: Import frozen Round 3 scenario
         run: |
-          curl -L --fail-with-body --max-time 1200 \
+          curl -L --fail-with-body --max-time 900 \
             -X POST \
             -H "Content-Type: application/zip" \
             --data-binary @round3.zip \
