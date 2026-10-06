@@ -35,6 +35,9 @@ declare
   v_facts integer;
   v_bad_future integer;
   v_bad_prebirth integer;
+  v_active_missing_bounds integer;
+  v_missing_parent_people integer;
+  v_missing_parent_events integer;
   v_multi_active_wiki_revision_people integer;
   v_bad_supersession integer;
   v_expected_auth integer;
@@ -78,6 +81,30 @@ begin
 
   if v_facts<>3398 then
     raise exception 'v1.1 person snapshot facts mismatch: % != 3398',v_facts;
+  end if;
+
+  select count(*)::int into v_missing_parent_people
+  from research.dataset_membership p
+  left join research.dataset_membership c
+    on c.dataset_snapshot_id=v_snapshot
+   and c.person_id=p.person_id
+  where p.dataset_snapshot_id=v_parent
+    and c.person_id is null;
+
+  if v_missing_parent_people<>0 then
+    raise exception 'v1.1 lost % parent person memberships',v_missing_parent_people;
+  end if;
+
+  select count(*)::int into v_missing_parent_events
+  from research.dataset_event_membership p
+  left join research.dataset_event_membership c
+    on c.dataset_snapshot_id=v_snapshot
+   and c.event_id=p.event_id
+  where p.dataset_snapshot_id=v_parent
+    and c.event_id is null;
+
+  if v_missing_parent_events<>0 then
+    raise exception 'v1.1 lost % parent raw event memberships',v_missing_parent_events;
   end if;
 
   -- Frozen parent must remain exactly the source snapshot we cloned.
@@ -127,6 +154,22 @@ begin
 
   if v_bad_prebirth<>0 then
     raise exception 'v1.1 has % active pre-birth events',v_bad_prebirth;
+  end if;
+
+  select count(*)::int into v_active_missing_bounds
+  from research.dataset_event_membership dem
+  join research.life_events e on e.id=dem.event_id
+  where dem.dataset_snapshot_id=v_snapshot
+    and dem.snapshot_model_eligible
+    and (
+      e.event_date_min is null
+      or e.event_date_max is null
+      or e.observable_from is null
+    );
+
+  if v_active_missing_bounds<>0 then
+    raise exception 'v1.1 has % active events with missing temporal bounds',
+      v_active_missing_bounds;
   end if;
 
   -- All historical Wikipedia revisions are preserved, but only one narrative
