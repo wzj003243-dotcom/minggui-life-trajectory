@@ -14,7 +14,9 @@
 -- JSONB text output is used intentionally because PostgreSQL emits JSONB object
 -- keys deterministically; arrays are constructed in explicit order.
 
-do $$
+begin;
+
+do $
 declare
   v_snapshot constant uuid := '7fce3b79-ebfc-40b2-a5f0-e91b28db6a02';
   v_parent constant uuid := '42628250-3a51-4b92-b4bd-12c7dec846a8';
@@ -29,6 +31,7 @@ declare
   v_bad_prebirth integer;
   v_multi_active_wiki_revision_people integer;
   v_bad_supersession integer;
+  v_auth_count integer;
   v_pending_auth integer;
   v_parent_people_hash text;
   v_parent_event_hash text;
@@ -139,11 +142,18 @@ begin
     raise exception 'v1.1 has % superseded events still marked active',v_bad_supersession;
   end if;
 
-  select count(*)::int into v_pending_auth
+  select
+    count(*)::int,
+    count(*) filter(where status<>'imported')::int
+  into v_auth_count,v_pending_auth
   from research.artifact_import_authorizations
   where importer_key='v11-biography-shard-v1'
-    and target_snapshot_id=v_snapshot
-    and status<>'imported';
+    and provider='github-actions'
+    and target_snapshot_id=v_snapshot;
+
+  if v_auth_count<>4 then
+    raise exception 'v1.1 requires exactly four imported biography source artifacts; found %',v_auth_count;
+  end if;
 
   if v_pending_auth<>0 then
     raise exception 'v1.1 has % biography artifact authorizations not imported',v_pending_auth;
@@ -215,6 +225,7 @@ with payload as (
   select string_agg(
     jsonb_build_object(
       'event_key',e.event_key,
+      'inclusion_role',dem.inclusion_role,
       'snapshot_model_eligible',dem.snapshot_model_eligible,
       'exclusion_reason',dem.exclusion_reason
     )::text,
@@ -302,7 +313,9 @@ begin
       'freeze_gate_passed',true
     )
   where id=v_snapshot and status='draft';
-end $$;
+end $;
+
+commit;
 
 select
   id::text,dataset_key,version,status,observation_cutoff_date,
