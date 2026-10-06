@@ -27,8 +27,9 @@ jobs:
           p=pathlib.Path("research/snapshots/v11-biography-import-control.json")
           ctl=json.loads(p.read_text())
           assert ctl["target_snapshot_id"]=="7fce3b79-ebfc-40b2-a5f0-e91b28db6a02"
-          assert len(ctl["shards"])==4
-          assert {int(x["shard"]) for x in ctl["shards"]}=={0,1,2,3}
+          assert len(ctl["shards"]) in (4,8)
+          ids=sorted(int(x["shard"]) for x in ctl["shards"])
+          assert ids==list(range(len(ids))), ids
           print(json.dumps(ctl,indent=2))
           with open("/tmp/source_run","w") as f:f.write(str(ctl["source_workflow_run_id"]))
           with open("/tmp/audit_run","w") as f:f.write(str(ctl["audit_workflow_run_id"]))
@@ -70,7 +71,7 @@ jobs:
           ENDPOINT: https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-v11-biography-chunk-import
         run: |
           set -euo pipefail
-          for shard in 0 1 2 3; do
+          for shard in $(python -c "import json; c=json.load(open('research/snapshots/v11-biography-import-control.json')); print(' '.join(str(x) for x in sorted(int(v['shard']) for v in c['shards'])))"); do
             aid=$(python -c "import json; c=json.load(open('research/snapshots/v11-biography-import-control.json')); print([x for x in c['shards'] if int(x['shard'])==$shard][0]['artifact_id'])")
             sha=$(python -c "import json; c=json.load(open('research/snapshots/v11-biography-import-control.json')); print([x for x in c['shards'] if int(x['shard'])==$shard][0]['sha256'])")
 
