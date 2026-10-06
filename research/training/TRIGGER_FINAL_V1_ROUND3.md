@@ -1,3 +1,3 @@
 # Trigger final v1 benchmark round 3
 
-Run fixed hgb_small across forward-era and geography holdout scenarios without retuning.
+Run the preregistered fixed-capacity out-of-domain benchmark on forward-era, US, and France holdouts.
