@@ -1,146 +1,118 @@
-# Final v1 Round 4 preregistration
+# Final v1 Round 4 preregistration — discrete trajectory hazard
 
-Frozen before any Round 4 test evaluation.
+Frozen before Round 4 test evaluation.
 
-## Purpose
+## Dataset
 
-Rounds 1–3 show that pre-cutoff “history” is the strongest feature family and survives era/geography holdouts. However, the existing `history_reality_v1` representation mixes several information types:
+- dataset: `next-canonical-event-discrete-hazard / v1.0-derived`
+- dataset ID: `731fa601-9c18-4ce8-9a8a-557ded47395d`
+- fingerprint: `9e2de5961856ad79ae260cb87fea1028f38b278c74eb3ff7669d94a35cf9f7c3`
+- source final-v1 dataset remains immutable
+- observation policy: `trajectory-observation-v1`
 
-- actual pre-cutoff event-domain content;
-- static birth/demographic context;
-- documentation/source-density signals.
+Risk intervals:
 
-Round 4 is a **shortcut ablation**. It does not search for a new model.
+- (0, 1] years
+- (1, 3] years
+- (3, 5] years
+- (5, 10] years
+- (10, 20] years
 
-## Frozen dataset and model
+Outcome per at-risk interval:
 
-- dataset ID: `8261f970-adc3-4f9a-8043-9e0f6cb90be8`
-- dataset fingerprint: `a4752568b6145db7629c62b8a68b4a7f5116db79c2628e5e5d4d28b9e76ba888`
-- target: career / recognition / relationship / other
-- model: Round-2 validation-selected `hgb_small`
-- seed: `20261006`
-- no Round 4 hyperparameter selection
+- no_event
+- career
+- recognition
+- relationship
+- other
 
-Fixed HGB configuration:
+Partial censor intervals do not receive labels.
 
-- learning_rate = 0.05
-- max_iter = 250
-- max_leaf_nodes = 15
-- min_samples_leaf = 30
-- l2_regularization = 2.0
-- early_stopping = false
+## Models
 
-Balanced sample weights are derived from each scenario's train partition only.
+No hyperparameter search.
 
-## Feature ablations
+1. interval-specific empirical train prior
+2. unweighted multinomial logistic regression, C=1.0
+3. frozen `hgb_small` capacity from Round 2:
+   - learning_rate 0.05
+   - max_iter 250
+   - max_leaf_nodes 15
+   - min_samples_leaf 30
+   - l2_regularization 2.0
+   - early_stopping false
 
-### history_reality_v1
+No class balancing is used in Round 4 because the goal is calibrated hazard probability rather than balanced classification score.
 
-Existing full history representation:
+## Features
 
-- cutoff age
-- birth year
-- gender
-- birth country / geo group
-- canonical and raw history counts
-- domain count
-- source-family count
-- life-stage count
-- per-domain event counts
+Every model receives interval timing variables:
 
-### history_content_counts_v1
+- interval_index
+- interval_start_year
+- interval_end_year
+- interval_width_years
 
-Retains pre-cutoff event content/count structure while removing static context and raw/source documentation controls:
+Feature ablations:
 
-- cutoff age
-- canonical history event count
-- domain count
-- life-stage count
-- per-domain event counts
+- history reality
+- raw birth calendar
+- objective BaZi
+- history + BaZi
+- matched shuffled-BaZi placebo
 
-Explicitly excludes:
+All non-time features come from the already-frozen cutoff feature snapshot.
 
-- birth year
-- gender
-- country / geo group
-- raw event count
-- source-family count
+## Split
 
-### history_content_mix_v1
+Initial benchmark uses `person_hash_v1`.
 
-Aggressive density removal:
+People do not cross train / validation / test.
 
-- cutoff age
-- has-history indicator
-- each domain's proportion of canonical history events
+## Primary evaluation
 
-All static birth context and absolute history/source counts are excluded.
-
-For a row with zero observed history, all domain proportions are zero and `has_history=0`.
-
-### history_static_context_v1
-
-Static shortcut control only:
-
-- cutoff age
-- birth year
-- gender
-- birth country
-- birth geo group
-
-No event-history variables.
-
-### history_documentation_density_v1
-
-Documentation-density control only:
-
-- cutoff age
-- canonical event count
-- raw event count
-- source-family count
-
-No domain content, no static birth context, no BaZi.
-
-## Scenarios
-
-The exact same ablations are evaluated under:
-
-1. `person_hash_v1`
-2. `forward_era_v1`
-3. `geo_us_holdout_v1`
-4. `geo_france_holdout_v1`
-
-No scenario is allowed to change model capacity or feature policy.
-
-## Metrics
+Interval-level likelihood is primary because the frozen risk-set construction already handles right censoring.
 
 Primary:
 
+- multiclass log loss
+- multiclass Brier score
+- calibration error
+- event-vs-no-event Brier score
+
+Event-domain diagnostics on observed event intervals:
+
+- conditional domain log loss
+- conditional domain macro-F1
+
+Secondary:
+
+- accuracy
 - macro-F1
 - balanced accuracy
-- multiclass log loss
 
-Calibration:
+## Horizon diagnostics
 
-- multiclass Brier
-- 10-bin ECE
+Conditional interval probabilities are chained into cumulative incidence at:
 
-Paired test comparisons use 1,000 bootstrap replicates clustered by person:
+- 1 year
+- 3 years
+- 5 years
+- 10 years
+- 20 years
 
-1. `history_content_counts - history_full`
-2. `history_content_mix - static_context`
-3. `history_content_counts - documentation_density`
+For each horizon, evaluate the five-state distribution:
+
+- no event by horizon
+- career first event
+- recognition first event
+- relationship first event
+- other first event
+
+Horizon scores use only cutoff states whose outcome is fully known at that horizon. They are diagnostic; interval likelihood remains the primary censor-aware score.
 
 ## Interpretation
 
-Round 4 is designed to answer:
+Round 4 asks whether the system can produce a useful probabilistic future trajectory, not whether BaZi can win a standalone benchmark.
 
-> Does predictive power remain when static era/geography and documentation-density shortcuts are removed?
-
-Evidence for event-content signal requires the history-content variants to remain meaningfully predictive and to outperform the static and/or documentation controls.
-
-A strong `static_context` or `documentation_density` score is itself important evidence of dataset/source bias and must be reported, not hidden.
-
-A strong `history_content_mix` score would be especially useful because it removes absolute history volume and therefore asks whether **what kinds of events have already happened**, rather than simply how richly a person is documented, predicts the next documented event class.
-
-This benchmark does not establish causality and does not yet model event order/sequence.
+History is expected to be the dominant state information. Raw calendar and BaZi remain explicitly separated so any prior contribution can be audited rather than hidden inside one model.
