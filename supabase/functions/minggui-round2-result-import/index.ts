@@ -212,7 +212,7 @@ Deno.serve(async(req)=>{
     }
 
     await q(
-      "update research.training_benchmark_protocols set metadata=metadata||jsonb_build_object('official_artifact_id',$1,'official_artifact_sha256',$2,'official_workflow_run_id',$3,'selected_config',$4::jsonb,'completed_at','2026-10-06T04:34:31Z') where protocol_key=$5",
+      "update research.training_benchmark_protocols set metadata=metadata||jsonb_build_object('official_artifact_id',$1::text,'official_artifact_sha256',$2::text,'official_workflow_run_id',$3::text,'selected_config',$4::jsonb,'completed_at','2026-10-06T04:34:31Z'::text) where protocol_key=$5::text",
       [ARTIFACT_ID,sha,WORKFLOW_RUN,JSON.stringify(summary.selected_config),PROTOCOL]
     );
 
