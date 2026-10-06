@@ -13,11 +13,24 @@ permissions:
 
 jobs:
   import:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scenario: forward_era_v1
+            artifact_id: "11393777604"
+            sha256: "77bcb94394f0ae45fb1385dd20bdef30c004a3ed231f466dd4235d1e45eb5da8"
+          - scenario: geo_us_holdout_v1
+            artifact_id: "11393857279"
+            sha256: "4a8edee6979b119ac404479029fa95d9cf7fc2a04026ec9dabbdac799761987d"
+          - scenario: geo_france_holdout_v1
+            artifact_id: "11393842460"
+            sha256: "0b2932d341c169f5eecec3102d69820b0d9f828530dfbec9353851268ccc4061"
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Download exact round3 artifact
+      - name: Download exact ${{ matrix.scenario }} artifact
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -25,10 +38,10 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11392340286/zip" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/${{ matrix.artifact_id }}/zip" \
             -o round3.zip
-          echo "5344a9c993602c29ced4c6453ccee4bd78f782046b2f08b1374619c2a451c293  round3.zip" | sha256sum -c -
-      - name: Import frozen round3 bundle
+          echo "${{ matrix.sha256 }}  round3.zip" | sha256sum -c -
+      - name: Import ${{ matrix.scenario }}
         run: |
           curl -L --fail-with-body --max-time 1200 \
             -X POST \
