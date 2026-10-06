@@ -12,56 +12,60 @@ permissions:
 
 jobs:
   benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - forward_era_v1
+          - geo_us_holdout_v1
+          - geo_france_holdout_v1
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Download frozen holdout rows
+      - name: Download frozen scenario rows
         run: |
-          mkdir -p data/round3-export
-          for scenario in forward_era_v1 geo_us_holdout_v1 geo_france_holdout_v1; do
-            mkdir -p "data/round3-export/${scenario}"
-            for offset in 0 1000 2000 3000 4000 5000 6000 7000; do
-              curl -L --fail-with-body --max-time 120 \
-                "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-training-export-r3-holdouts?scenario=${scenario}&offset=${offset}&limit=1000" \
-                -o "data/round3-export/${scenario}/chunk-${offset}.json"
-            done
+          mkdir -p "data/round3-export/${{ matrix.scenario }}"
+          for offset in 0 1000 2000 3000 4000 5000 6000 7000; do
+            curl -L --fail-with-body --max-time 120 \
+              "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-training-export-round3?scenario=${{ matrix.scenario }}&offset=${offset}&limit=1000" \
+              -o "data/round3-export/${{ matrix.scenario }}/chunk-${offset}.json"
           done
           python - <<'PY'
           import json, pathlib
-          root=pathlib.Path("data/round3-export")
-          for d in sorted(p for p in root.iterdir() if p.is_dir()):
-              total=0
-              for p in sorted(d.glob("chunk-*.json")):
-                  rows=json.load(open(p))
-                  assert isinstance(rows,list), p
-                  total += len(rows)
-              print(d.name,total)
-              assert total == 7465, (d.name,total)
+          root=pathlib.Path("data/round3-export/${{ matrix.scenario }}")
+          total=0
+          for p in sorted(root.glob("chunk-*.json")):
+              rows=json.load(open(p))
+              assert isinstance(rows,list), p
+              total += len(rows)
+          print("rows", total)
+          assert total == 7465, total
           PY
       - name: Install benchmark dependencies
         run: pip install "pandas>=2.2,<3" "numpy>=2.0,<3" "scikit-learn>=1.6,<2" "joblib>=1.4,<2"
-      - name: Run preregistered round 3 OOD benchmark
+      - name: Run frozen Round 3 holdout
         run: |
           python research/models/benchmark_final_v1_round3.py \
-            data/round3-export \
-            data/round3-results \
-            | tee data/round3-results.log
+            "data/round3-export/${{ matrix.scenario }}" \
+            "data/round3-results/${{ matrix.scenario }}" \
+            --scenario "${{ matrix.scenario }}" \
+            | tee "data/round3-${{ matrix.scenario }}.log"
       - name: Show summary
         if: always()
         run: |
-          cat data/round3-results/round3_summary.json || true
-          cat data/round3-results/SHA256SUMS.json || true
-      - name: Upload benchmark artifact
+          cat "data/round3-results/${{ matrix.scenario }}/round3_summary.json" || true
+          cat "data/round3-results/${{ matrix.scenario }}/SHA256SUMS.json" || true
+      - name: Upload scenario artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: minggui-final-v1-round3
+          name: minggui-final-v1-round3-${{ matrix.scenario }}
           path: |
-            data/round3-results/
-            data/round3-results.log
+            data/round3-results/${{ matrix.scenario }}/
+            data/round3-${{ matrix.scenario }}.log
           retention-days: 14
           if-no-files-found: error
