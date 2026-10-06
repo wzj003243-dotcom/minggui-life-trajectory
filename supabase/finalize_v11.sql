@@ -1,32 +1,38 @@
--- MingGui v1.1 freeze finalizer.
--- DO NOT run until all v1.1 biography shards are imported and union audit passes.
+-- MingGui v1.1 audited freeze finalizer.
+-- DO NOT run until:
+--   1) the v1.1 biography union audit passes,
+--   2) the generated artifact-authorizations.sql is applied,
+--   3) all authorized biography chunks are imported and finalized,
+--   4) coverage/bias audit has been reviewed.
 --
 -- Freeze/hash spec: snapshot-freeze-v4
+-- Canonicalization: exact-subject-v1
+--
+-- snapshot-freeze-v4 serialization:
 --   person_membership_sha256:
---     sha256 of newline-delimited sorted Wikidata QIDs.
+--     newline-delimited Wikidata QIDs sorted lexicographically.
 --   event_membership_sha256:
---     sha256 of newline-delimited JSONB records ordered by event_key containing
+--     newline-delimited JSONB objects sorted by event_key with
 --     event_key, snapshot_model_eligible, exclusion_reason.
 --   canonical_event_sha256:
---     sha256 of newline-delimited JSONB canonical fact records ordered by
---     canonical_event_key. The serialization explicitly includes raw provenance.
+--     newline-delimited JSONB objects sorted by canonical_event_key,
+--     including the canonical fact and ordered raw_event_keys provenance.
 --
--- JSONB text output is used intentionally because PostgreSQL emits JSONB object
--- keys deterministically; arrays are constructed in explicit order.
+-- This script is intentionally transactional: any failed gate rolls back the
+-- canonical materialization, hashes, and status change.
 
 begin;
 
-do $
+do $$
 declare
   v_snapshot constant uuid := '7fce3b79-ebfc-40b2-a5f0-e91b28db6a02';
   v_parent constant uuid := '42628250-3a51-4b92-b4bd-12c7dec846a8';
   v_cutoff constant date := date '2026-10-06';
 
   v_status text;
+  v_snapshot_cutoff date;
   v_people integer;
   v_facts integer;
-  v_events integer;
-  v_eligible integer;
   v_bad_future integer;
   v_bad_prebirth integer;
   v_multi_active_wiki_revision_people integer;
@@ -34,16 +40,28 @@ declare
   v_expected_auth integer;
   v_auth_count integer;
   v_pending_auth integer;
+  v_registry_count integer;
+  v_manifest_sha text;
+
   v_parent_people_hash text;
   v_parent_event_hash text;
   v_parent_canonical_hash text;
 begin
-  select status into v_status
+  select status,observation_cutoff_date,metadata->>'v11_biography_import_manifest_sha256'
+  into v_status,v_snapshot_cutoff,v_manifest_sha
   from research.dataset_snapshots
   where id=v_snapshot;
 
   if v_status is distinct from 'draft' then
     raise exception 'v1.1 snapshot must be draft before finalization; status=%',v_status;
+  end if;
+
+  if v_snapshot_cutoff is distinct from v_cutoff then
+    raise exception 'v1.1 observation cutoff mismatch: % != %',v_snapshot_cutoff,v_cutoff;
+  end if;
+
+  if v_manifest_sha is null or length(v_manifest_sha)<>64 then
+    raise exception 'v1.1 audited biography import manifest fingerprint missing';
   end if;
 
   select count(*)::int into v_people
@@ -62,6 +80,7 @@ begin
     raise exception 'v1.1 person snapshot facts mismatch: % != 3398',v_facts;
   end if;
 
+  -- Frozen parent must remain exactly the source snapshot we cloned.
   select
     person_membership_sha256,
     event_membership_sha256,
@@ -73,13 +92,17 @@ begin
   from research.dataset_snapshots
   where id=v_parent;
 
-  if v_parent_people_hash is distinct from 'ddf9631abaa04cfa89ce0810d3ba1b4fa2ca6bb6cfa033bbfc81c6a74f8e05da'
-     or v_parent_event_hash is distinct from 'be680992ce8b188f107cfac31f9c384311071701c032ca73722fe51de9712003'
-     or v_parent_canonical_hash is distinct from '88f5bf90c86424a626e4c1bd7b14709c41170a0cc6fc48f9d400754b25ad4654'
+  if v_parent_people_hash is distinct from
+       'ddf9631abaa04cfa89ce0810d3ba1b4fa2ca6bb6cfa033bbfc81c6a74f8e05da'
+     or v_parent_event_hash is distinct from
+       'be680992ce8b188f107cfac31f9c384311071701c032ca73722fe51de9712003'
+     or v_parent_canonical_hash is distinct from
+       '88f5bf90c86424a626e4c1bd7b14709c41170a0cc6fc48f9d400754b25ad4654'
   then
     raise exception 'frozen v1.0 parent fingerprints changed';
   end if;
 
+  -- Snapshot model layer may never contain information observable after cutoff.
   select count(*)::int into v_bad_future
   from research.dataset_event_membership dem
   join research.life_events e on e.id=dem.event_id
@@ -87,7 +110,8 @@ begin
     and dem.snapshot_model_eligible
     and (
       (e.observable_from is not null and e.observable_from>v_cutoff)
-      or (e.event_date_min is not null and e.event_date_min>v_cutoff)
+      or
+      (e.event_date_min is not null and e.event_date_min>v_cutoff)
     );
 
   if v_bad_future<>0 then
@@ -105,8 +129,8 @@ begin
     raise exception 'v1.1 has % active pre-birth events',v_bad_prebirth;
   end if;
 
-  -- A person may retain every historical Wikipedia revision in raw storage, but
-  -- only one revision of narrative-rule events may be active in this snapshot.
+  -- All historical Wikipedia revisions are preserved, but only one narrative
+  -- revision per person may remain active in the v1.1 model layer.
   with active_revision as (
     select
       e.person_id,
@@ -132,7 +156,6 @@ begin
       v_multi_active_wiki_revision_people;
   end if;
 
-  -- Anything explicitly marked superseded must never still be active.
   select count(*)::int into v_bad_supersession
   from research.dataset_event_membership
   where dataset_snapshot_id=v_snapshot
@@ -140,9 +163,10 @@ begin
     and snapshot_model_eligible;
 
   if v_bad_supersession<>0 then
-    raise exception 'v1.1 has % superseded events still marked active',v_bad_supersession;
+    raise exception 'v1.1 has % superseded Wikipedia events still active',v_bad_supersession;
   end if;
 
+  -- Artifact completeness. The audited manifest sets the expected artifact count.
   select nullif(metadata->>'v11_biography_expected_artifacts','')::int
   into v_expected_auth
   from research.dataset_snapshots
@@ -162,50 +186,96 @@ begin
     and target_snapshot_id=v_snapshot;
 
   if v_auth_count<>v_expected_auth then
-    raise exception 'v1.1 biography source artifact count mismatch: found %, expected %',v_auth_count,v_expected_auth;
+    raise exception 'v1.1 biography authorization count mismatch: found %, expected %',
+      v_auth_count,v_expected_auth;
   end if;
 
   if v_pending_auth<>0 then
     raise exception 'v1.1 has % biography artifact authorizations not imported',v_pending_auth;
   end if;
 
-  -- Rebuild canonical facts from the snapshot-specific membership.
+  select count(*)::int into v_registry_count
+  from research.artifact_registry
+  where artifact_kind='wikipedia-biography-v11-shard'
+    and status='imported'
+    and metadata->>'target_snapshot_id'=v_snapshot::text;
+
+  if v_registry_count<>v_expected_auth then
+    raise exception 'v1.1 biography artifact registry count mismatch: found %, expected %',
+      v_registry_count,v_expected_auth;
+  end if;
+
+  -- Rebuild canonical facts from the v1.1 snapshot-specific model eligibility.
   delete from research.snapshot_canonical_event_facts
   where dataset_snapshot_id=v_snapshot;
 
   insert into research.snapshot_canonical_event_facts(
-    dataset_snapshot_id,canonical_event_key,person_id,domain,event_type,
-    event_date_min,event_date_max,temporal_precision,calendar_kind,
-    age_min,age_max,age_mid,observable_from,subject_external_id,
-    confidence_max,snapshot_model_eligible,source_families,source_family_count,
-    raw_event_count,raw_event_keys,raw_event_ids,canonicalization_metadata
+    dataset_snapshot_id,
+    canonical_event_key,
+    person_id,
+    domain,
+    event_type,
+    event_date_min,
+    event_date_max,
+    temporal_precision,
+    calendar_kind,
+    age_min,
+    age_max,
+    age_mid,
+    observable_from,
+    subject_external_id,
+    confidence_max,
+    snapshot_model_eligible,
+    source_families,
+    source_family_count,
+    raw_event_count,
+    raw_event_keys,
+    raw_event_ids,
+    canonicalization_metadata
   )
   select
-    dataset_snapshot_id,canonical_event_key,person_id,domain,event_type,
-    event_date_min,event_date_max,temporal_precision,calendar_kind,
-    age_min,age_max,age_mid,observable_from,subject_external_id,
-    confidence_max,snapshot_model_eligible,source_families,source_family_count,
-    raw_event_count,raw_event_keys,raw_event_ids,canonicalization_metadata
+    dataset_snapshot_id,
+    canonical_event_key,
+    person_id,
+    domain,
+    event_type,
+    event_date_min,
+    event_date_max,
+    temporal_precision,
+    calendar_kind,
+    age_min,
+    age_max,
+    age_mid,
+    observable_from,
+    subject_external_id,
+    confidence_max,
+    snapshot_model_eligible,
+    source_families,
+    source_family_count,
+    raw_event_count,
+    raw_event_keys,
+    raw_event_ids,
+    canonicalization_metadata
   from research.snapshot_canonical_events_v1
   where dataset_snapshot_id=v_snapshot;
-
-  select count(*)::int into v_events
-  from research.dataset_event_membership
-  where dataset_snapshot_id=v_snapshot;
-
-  select count(*)::int into v_eligible
-  from research.dataset_event_membership
-  where dataset_snapshot_id=v_snapshot
-    and snapshot_model_eligible;
 
   update research.dataset_snapshots
   set
     observation_cutoff_date=v_cutoff,
     person_count=v_people,
-    event_count=v_events,
-    model_event_count=v_eligible,
+    event_count=(
+      select count(*)::bigint
+      from research.dataset_event_membership
+      where dataset_snapshot_id=v_snapshot
+    ),
+    model_event_count=(
+      select count(*)::bigint
+      from research.dataset_event_membership
+      where dataset_snapshot_id=v_snapshot
+        and snapshot_model_eligible
+    ),
     canonical_event_count=(
-      select count(*)::int
+      select count(*)::bigint
       from research.snapshot_canonical_event_facts
       where dataset_snapshot_id=v_snapshot
     ),
@@ -217,25 +287,26 @@ begin
       'finalizer','supabase/finalize_v11.sql'
     )
   where id=v_snapshot;
-end $$;
+end
+$$;
 
--- Compute stable v4 fingerprints in separate statements after canonical materialization.
+-- Stable v4 fingerprints.
 with payload as (
   select string_agg(p.wikidata_id,E'\n' order by p.wikidata_id) s
   from research.dataset_membership dm
   join research.people p on p.id=dm.person_id
   where dm.dataset_snapshot_id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid
 )
-update research.dataset_snapshots
-set person_membership_sha256=encode(extensions.digest(coalesce(payload.s,''),'sha256'),'hex')
+update research.dataset_snapshots ds
+set person_membership_sha256=
+  encode(extensions.digest(coalesce(payload.s,''),'sha256'),'hex')
 from payload
-where id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid;
+where ds.id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid;
 
 with payload as (
   select string_agg(
     jsonb_build_object(
       'event_key',e.event_key,
-      'inclusion_role',dem.inclusion_role,
       'snapshot_model_eligible',dem.snapshot_model_eligible,
       'exclusion_reason',dem.exclusion_reason
     )::text,
@@ -246,10 +317,11 @@ with payload as (
   join research.life_events e on e.id=dem.event_id
   where dem.dataset_snapshot_id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid
 )
-update research.dataset_snapshots
-set event_membership_sha256=encode(extensions.digest(coalesce(payload.s,''),'sha256'),'hex')
+update research.dataset_snapshots ds
+set event_membership_sha256=
+  encode(extensions.digest(coalesce(payload.s,''),'sha256'),'hex')
 from payload
-where id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid;
+where ds.id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid;
 
 with payload as (
   select string_agg(
@@ -274,39 +346,55 @@ with payload as (
   join research.people p on p.id=c.person_id
   where c.dataset_snapshot_id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid
 )
-update research.dataset_snapshots
-set canonical_event_sha256=encode(extensions.digest(coalesce(payload.s,''),'sha256'),'hex')
+update research.dataset_snapshots ds
+set canonical_event_sha256=
+  encode(extensions.digest(coalesce(payload.s,''),'sha256'),'hex')
 from payload
-where id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid;
+where ds.id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid;
 
--- Final safety gate before setting frozen.
 do $$
 declare
   v_snapshot constant uuid := '7fce3b79-ebfc-40b2-a5f0-e91b28db6a02';
   v_people integer;
-  v_events integer;
-  v_eligible integer;
-  v_canonical integer;
+  v_events bigint;
+  v_eligible bigint;
+  v_canonical bigint;
   v_ph text;
   v_eh text;
   v_ch text;
 begin
   select
-    person_count,event_count,model_event_count,canonical_event_count,
-    person_membership_sha256,event_membership_sha256,canonical_event_sha256
-  into v_people,v_events,v_eligible,v_canonical,v_ph,v_eh,v_ch
+    person_count,
+    event_count,
+    model_event_count,
+    canonical_event_count,
+    person_membership_sha256,
+    event_membership_sha256,
+    canonical_event_sha256
+  into
+    v_people,
+    v_events,
+    v_eligible,
+    v_canonical,
+    v_ph,
+    v_eh,
+    v_ch
   from research.dataset_snapshots
   where id=v_snapshot;
 
   if v_people<>3398 then
-    raise exception 'final person_count mismatch';
+    raise exception 'final person_count mismatch: %',v_people;
   end if;
+
   if v_events<31710 then
-    raise exception 'v1.1 lost raw event membership: %',v_events;
+    raise exception 'v1.1 lost raw event membership: % < 31710',v_events;
   end if;
+
   if v_eligible<=0 or v_canonical<=0 then
-    raise exception 'invalid final event/canonical counts';
+    raise exception 'invalid final model/canonical counts: eligible=% canonical=%',
+      v_eligible,v_canonical;
   end if;
+
   if v_ph is null or length(v_ph)<>64
      or v_eh is null or length(v_eh)<>64
      or v_ch is null or length(v_ch)<>64
@@ -322,15 +410,32 @@ begin
       'frozen_at',now()::text,
       'freeze_gate_passed',true
     )
-  where id=v_snapshot and status='draft';
-end $;
+  where id=v_snapshot
+    and status='draft';
+
+  if not found then
+    raise exception 'v1.1 freeze status update failed';
+  end if;
+end
+$$;
 
 commit;
 
 select
-  id::text,dataset_key,version,status,observation_cutoff_date,
-  person_count,event_count,model_event_count,canonical_event_count,
-  person_membership_sha256,event_membership_sha256,canonical_event_sha256,
-  canonicalization_version,frozen_at,metadata
+  id::text,
+  dataset_key,
+  version,
+  status,
+  observation_cutoff_date,
+  person_count,
+  event_count,
+  model_event_count,
+  canonical_event_count,
+  person_membership_sha256,
+  event_membership_sha256,
+  canonical_event_sha256,
+  canonicalization_version,
+  frozen_at,
+  metadata
 from research.dataset_snapshots
 where id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid;
