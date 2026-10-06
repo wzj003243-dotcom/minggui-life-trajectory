@@ -94,8 +94,10 @@ Deno.serve(async(req)=>{
     if(auth[0].target_snapshot_id!==EXPECTED_TARGET)throw new Error("wrong target snapshot");
     if(!["approved","imported"].includes(auth[0].status))throw new Error("authorization status "+auth[0].status);
 
-    const snap=await sql.unsafe("select version,status from research.dataset_snapshots where id=$1::uuid",[EXPECTED_TARGET]);
+    const snap=await sql.unsafe("select version,status,observation_cutoff_date::text observation_cutoff_date from research.dataset_snapshots where id=$1::uuid",[EXPECTED_TARGET]);
     if(snap.length!==1||snap[0].version!=="v1.1-working"||snap[0].status!=="draft")throw new Error("v1.1 target not draft");
+    const snapshotCutoff=String(snap[0].observation_cutoff_date||"").slice(0,10);
+    if(!snapshotCutoff)throw new Error("v1.1 target missing observation cutoff");
 
     const storagePath=await archive(body,artifactId,sha);
     const zip=await JSZip.loadAsync(body);
@@ -187,6 +189,7 @@ Deno.serve(async(req)=>{
         const amin=ageYears(person.birth,d0),amax=ageYears(person.birth,d1);
         const amid=nil(r.age_mid)!==null?Number(r.age_mid):(amin!==null&&amax!==null?Math.round(((amin+amax)/2)*10000)/10000:null);
         const isPrebirth=amax!==null&&amax<0;if(isPrebirth)prebirth++;
+        const afterSnapshotCutoff=Boolean(obs&&String(obs).slice(0,10)>snapshotCutoff);
         events.push({
           event_key:String(r.event_id),person_id:person.id,domain:String(r.domain||"other"),event_type:String(r.event_type||"other"),
           event_date_min:d0,event_date_max:d1,temporal_precision:nil(r.temporal_precision)||"year",
@@ -194,8 +197,11 @@ Deno.serve(async(req)=>{
           extraction_method:nil(r.extraction_method)||"rule-from-revision-text",confidence:Number(r.confidence||0.82),
           source_rank:"revision-pinned-narrative-rule",reference_count:1,
           attributes:{candidate_id:nil(r.candidate_id),revision_id:nil(r.revision_id),evidence_text_length:String(r.evidence_text||"").length,v11_artifact_id:artifactId,v11_shard:shard},
-          source_snapshot_id:EXPECTED_TARGET,source_url:nil(r.source_url),model_eligible:Boolean(d0&&d1&&obs)&&!isPrebirth,
-          quality_flags:isPrebirth?{prebirth_interval:true}:{}
+          source_snapshot_id:EXPECTED_TARGET,source_url:nil(r.source_url),model_eligible:Boolean(d0&&d1&&obs)&&!isPrebirth&&!afterSnapshotCutoff,
+          quality_flags:{
+            ...(isPrebirth?{prebirth_interval:true}:{}),
+            ...(afterSnapshotCutoff?{after_snapshot_cutoff:true,snapshot_cutoff:snapshotCutoff}:{})
+          }
         });
       }
       importedEvents=events.length;
