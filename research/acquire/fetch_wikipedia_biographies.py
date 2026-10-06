@@ -126,7 +126,11 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument("cohort");ap.add_argument("output")
     ap.add_argument("--id-column",default="wikidata_id");ap.add_argument("--limit",type=int,default=2000)
     ap.add_argument("--sitelink-map",default="")
+    ap.add_argument("--batch-size",type=int,default=1,
+                    help="Wikipedia page titles per API request; default 1 preserves legacy behavior")
     args=ap.parse_args()
+    if args.batch_size<1 or args.batch_size>20:
+        ap.error("--batch-size must be between 1 and 20")
     people=read_people(Path(args.cohort),args.id_column,args.limit);qids=[x[0] for x in people]
     if args.sitelink_map:
         allowed=set(qids);links={}
@@ -143,7 +147,7 @@ def main():
     stats={"failed":0};records_count=0;content_chars_total=0
     with gzip.open(out,"wt",encoding="utf-8") as w:
         for site,pairs in by_site.items():
-            for r in fetch_site(site,sorted(pairs),stats=stats):
+            for r in fetch_site(site,sorted(pairs),batch_size=args.batch_size,stats=stats):
                 w.write(json.dumps(r,ensure_ascii=False)+"\n")
                 w.flush()
                 records_count+=1
