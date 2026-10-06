@@ -1,0 +1,45 @@
+name: Import final v1 round2 results
+
+on:
+  push:
+    branches:
+      - "data-run-import-final-v1-round2*"
+    paths:
+      - "research/training/TRIGGER_IMPORT_FINAL_V1_ROUND2.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact round2 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11390157851/zip" \
+            -o round2.zip
+          echo "39337ab164b62a7301eae7c7ca260d48065751f7bcad482efd2c552d80ed46bd  round2.zip" | sha256sum -c -
+      - name: Import frozen round2 bundle
+        run: |
+          curl -L --fail-with-body --max-time 600 \
+            -X POST \
+            -H "Content-Type: application/zip" \
+            --data-binary @round2.zip \
+            "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-round2-result-import" \
+            | tee import-result.json
+          python - <<'PY'
+          import json
+          p=json.load(open("import-result.json"))
+          if not p.get("ok"):
+              raise SystemExit(p)
+          print(json.dumps(p,indent=2))
+          PY
