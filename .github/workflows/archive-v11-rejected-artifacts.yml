@@ -1,0 +1,45 @@
+name: Archive v1.1 rejected biography artifacts
+
+on:
+  push:
+    branches:
+      - "data-run-archive-v11-rejected*"
+    paths:
+      - "research/acquire/TRIGGER_ARCHIVE_V11_REJECTED.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive exact rejected/partial artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENDPOINT: https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-archive-approved-artifact
+        run: |
+          set -euo pipefail
+          cat > /tmp/artifacts.tsv <<'EOF'
+          11398193051	3c3a678005980a9f4e63c20fae813dd73f76e8b575998b9c733c00bdc63cff96
+          11398456161	443e863906e83426b61d678ad6cf8855bd4d74cbde43b2b103eed508b89259af
+          11405355636	fe45b95ecd65be89cda353fd6de0c42ef9ddd907d023eaf7bff14185d6fc5bf8
+          11405600697	99ad0934b2570784fd63b03cd53822172e0ebfb5ba852d6330cdb0aa1006617f
+          EOF
+          while IFS=$'\t' read -r aid sha; do
+            curl -L --fail-with-body \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$aid/zip" \
+              -o "$aid.zip"
+            echo "$sha  $aid.zip" | sha256sum -c -
+            curl -L --fail-with-body --max-time 150 \
+              -X POST -H "Content-Type: application/zip" \
+              --data-binary @"$aid.zip" "$ENDPOINT" \
+              -o "$aid.result.json"
+            python -c "import json; p=json.load(open('$aid.result.json')); assert p.get('ok'), p; print(p)"
+          done < /tmp/artifacts.tsv
