@@ -1,0 +1,1 @@
+# Trigger v1.1 biography resume\n\nRecover complete revision records from the cancelled 4-shard run, fetch only remaining QIDs for shards 0/1, fetch full shards 2/3, then build final artifacts.\n
