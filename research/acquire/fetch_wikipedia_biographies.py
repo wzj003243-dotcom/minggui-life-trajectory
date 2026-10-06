@@ -129,8 +129,8 @@ def main():
     ap.add_argument("--batch-size",type=int,default=1,
                     help="Wikipedia page titles per API request; default 1 preserves legacy behavior")
     args=ap.parse_args()
-    if args.batch_size<1 or args.batch_size>20:
-        ap.error("--batch-size must be between 1 and 20")
+    if args.batch_size != 1:
+        ap.error("--batch-size > 1 is disabled: MediaWiki revision title-to-QID mapping is not yet verified for multi-title requests")
     people=read_people(Path(args.cohort),args.id_column,args.limit);qids=[x[0] for x in people]
     if args.sitelink_map:
         allowed=set(qids);links={}
