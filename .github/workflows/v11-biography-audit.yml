@@ -53,6 +53,19 @@ jobs:
           sha256sum data/v11-biography-shards/shard-*.zip \
             > data/v11-biography-audit/local-repacked-sha256.txt
 
+      - name: Prepare hash-addressed import chunks
+        env:
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          python research/import/prepare_v11_biography_import.py \
+            --artifact-metadata data/v11-biography-audit/github-artifacts.json \
+            --source-run-id "$RUN_ID" \
+            --out data/v11-biography-audit/import-chunks \
+            data/v11-biography-shards/shard-0.zip \
+            data/v11-biography-shards/shard-1.zip \
+            data/v11-biography-shards/shard-2.zip \
+            data/v11-biography-shards/shard-3.zip
+
       - name: Upload union audit
         uses: actions/upload-artifact@v4
         with:
