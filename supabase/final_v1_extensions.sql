@@ -394,3 +394,55 @@ to service_role;
 --   research.training_cutoff_candidates_canonical_v1
 -- and research.freeze_dataset_snapshot_v1(uuid,date) at freeze_spec_version snapshot-freeze-v3.
 -- Their exact frozen semantics are specified in TRAINING_DATA_CONTRACT.md and verified by the v1.0 fingerprints.
+
+
+-- Frozen model-facing read views.
+create or replace view research.training_model_matrix_v1
+with (security_invoker=true) as
+select
+  te.training_dataset_id,
+  te.id as training_example_id,
+  te.person_id,
+  p.wikidata_id,
+  te.cutoff_age,
+  te.cutoff_date,
+  te.split_name,
+  te.fold,
+  te.split_group,
+  te.target_domain as y_raw_domain,
+  case
+    when te.target_domain in ('career','recognition','relationship') then te.target_domain
+    when te.target_domain is null then null
+    else 'other'
+  end as y_class_4,
+  (te.eligibility_flags->>'classification_eligible')::boolean as classification_eligible,
+  (te.eligibility_flags->>'censor_aware_eligible')::boolean as censor_aware_eligible,
+  te.right_censored,
+  te.censoring_reason,
+  fs.features as x_features,
+  fs.included_event_keys as provenance_raw_history_event_keys,
+  fs.included_canonical_event_keys as modeled_history_canonical_event_keys,
+  td.feature_spec_version,
+  te.canonicalization_version
+from research.training_examples te
+join research.training_dataset_versions td on td.id=te.training_dataset_id
+join research.people p on p.id=te.person_id
+join research.feature_snapshots fs
+  on fs.person_id=te.person_id
+ and fs.information_cutoff=te.information_cutoff
+ and fs.feature_spec_version=td.feature_spec_version
+ and fs.source_snapshot_id=td.source_snapshot_id
+where td.status='frozen'
+  and fs.leakage_audit_passed;
+
+create or replace view research.training_classification_rows_v1
+with (security_invoker=true) as
+select *
+from research.training_model_matrix_v1
+where classification_eligible
+  and y_class_4 is not null;
+
+revoke all on research.training_model_matrix_v1,research.training_classification_rows_v1
+  from public,anon,authenticated;
+grant select on research.training_model_matrix_v1,research.training_classification_rows_v1
+  to service_role;
