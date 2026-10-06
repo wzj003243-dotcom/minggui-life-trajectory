@@ -12,8 +12,8 @@ permissions:
   actions: read
 
 concurrency:
-  group: v11-biography-enrichment-fallback8
-  cancel-in-progress: false
+  group: v11-biography-enrichment
+  cancel-in-progress: true
 
 jobs:
   biography:
