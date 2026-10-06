@@ -71,19 +71,21 @@ Deno.serve(async(req)=>{
     const body=await res.text();
     if(!res.ok)throw new Error(`storage archive failed ${res.status}: ${body}`);
 
-    const metadata={archive_only:true,...(cfg.metadata||{})};
+    const trainingEligible=cfg.metadata?.training_eligible===true;
+    const reason=typeof cfg.metadata?.reason==="string"?cfg.metadata.reason:null;
     await sql.unsafe(
       "insert into research.artifact_registry("+
       "artifact_key,provider,provider_artifact_id,artifact_name,artifact_kind,sha256,size_bytes,"+
       "source_workflow_run_id,storage_bucket,storage_path,status,metadata,archived_at) "+
-      "values($1,'github-actions',$2,$3,$4,$5,$6,$7,'research-artifacts',$8,'archived',$9::jsonb,now()) "+
+      "values($1,'github-actions',$2,$3,$4,$5,$6,$7,'research-artifacts',$8,'archived',"+
+      "jsonb_strip_nulls(jsonb_build_object('archive_only',true,'training_eligible',$9::boolean,'reason',$10::text)),now()) "+
       "on conflict(artifact_key) do update set "+
       "storage_bucket=excluded.storage_bucket,storage_path=excluded.storage_path,size_bytes=excluded.size_bytes,"+
       "status='archived',archived_at=coalesce(research.artifact_registry.archived_at,now()),"+
       "metadata=research.artifact_registry.metadata||excluded.metadata",
       [
         "github-actions:"+cfg.artifactId+":"+sha,cfg.artifactId,cfg.name,cfg.kind,sha,
-        bytes.length,cfg.runId,path,JSON.stringify(metadata)
+        bytes.length,cfg.runId,path,trainingEligible,reason
       ]
     );
     await sql.end({timeout:5});
