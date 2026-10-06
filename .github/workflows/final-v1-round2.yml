@@ -1,0 +1,63 @@
+name: Final v1 benchmark round 2
+
+on:
+  push:
+    branches:
+      - "data-run-final-v1-round2*"
+    paths:
+      - "research/training/TRIGGER_FINAL_V1_ROUND2.md"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download frozen classification rows
+        run: |
+          mkdir -p data/round2-export
+          for offset in 0 1000 2000 3000 4000 5000 6000 7000; do
+            curl -L --fail-with-body --max-time 120 \
+              "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-training-export-r1?offset=${offset}&limit=1000" \
+              -o "data/round2-export/chunk-${offset}.json"
+          done
+          python - <<'PY'
+          import json, pathlib
+          total=0
+          for p in sorted(pathlib.Path("data/round2-export").glob("chunk-*.json")):
+              rows=json.load(open(p))
+              assert isinstance(rows,list), p
+              total += len(rows)
+          print("rows", total)
+          assert total == 7465, total
+          PY
+      - name: Install benchmark dependencies
+        run: pip install "pandas>=2.2,<3" "numpy>=2.0,<3" "scikit-learn>=1.6,<2" "joblib>=1.4,<2"
+      - name: Run preregistered round 2 benchmark
+        run: |
+          python research/models/benchmark_final_v1_round2.py \
+            data/round2-export \
+            data/round2-results \
+            | tee data/round2-results.log
+      - name: Show selection and summary
+        if: always()
+        run: |
+          cat data/round2-results/selection.json || true
+          cat data/round2-results/round2_summary.json || true
+          cat data/round2-results/SHA256SUMS.json || true
+      - name: Upload benchmark artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-final-v1-round2
+          path: |
+            data/round2-results/
+            data/round2-results.log
+          retention-days: 14
+          if-no-files-found: error
