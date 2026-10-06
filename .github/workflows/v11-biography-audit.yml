@@ -56,10 +56,12 @@ jobs:
       - name: Prepare hash-addressed import chunks
         env:
           RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           python research/import/prepare_v11_biography_import.py \
             --artifact-metadata data/v11-biography-audit/github-artifacts.json \
             --source-run-id "$RUN_ID" \
+            --source-git-sha "$HEAD_SHA" \
             --out data/v11-biography-audit/import-chunks \
             data/v11-biography-shards/shard-0.zip \
             data/v11-biography-shards/shard-1.zip \
