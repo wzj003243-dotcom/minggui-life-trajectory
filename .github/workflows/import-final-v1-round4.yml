@@ -1,0 +1,88 @@
+name: Import final v1 Round 4 results
+
+on:
+  push:
+    branches:
+      - "data-run-import-final-v1-round4*"
+    paths:
+      - "research/training/TRIGGER_IMPORT_FINAL_V1_ROUND4.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact Round 4 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11395666323/zip" \
+            -o round4.zip
+          echo "750dd5f4613cebe599cde9964cb1a3ca46ee42d7fea4f474b6e8aa3bcf20290f  round4.zip" | sha256sum -c -
+
+      - name: Archive bundle and import metadata
+        run: |
+          curl -L --fail-with-body --max-time 180 \
+            -X POST -H "Content-Type: application/zip" \
+            --data-binary @round4.zip \
+            "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-round4-result-import?mode=meta" \
+            | tee meta.json
+          python - <<'PY'
+          import json
+          p=json.load(open("meta.json"))
+          assert p.get("ok"), p
+          print(json.dumps(p,indent=2))
+          PY
+
+      - name: Import interval predictions in bounded chunks
+        run: |
+          for start in 0 50000 100000 150000; do
+            end=$((start+50000))
+            echo "interval $start..$end"
+            curl -L --fail-with-body --max-time 180 \
+              -X POST \
+              "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-round4-result-import?mode=interval&start=$start&end=$end" \
+              -o "interval-$start.json"
+            cat "interval-$start.json"
+            python -c "import json; p=json.load(open('interval-$start.json')); assert p.get('ok'), p"
+          done
+
+      - name: Import horizon predictions in bounded chunks
+        run: |
+          for start in 0 60000 120000 180000; do
+            end=$((start+60000))
+            echo "horizon $start..$end"
+            curl -L --fail-with-body --max-time 180 \
+              -X POST \
+              "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-round4-result-import?mode=horizon&start=$start&end=$end" \
+              -o "horizon-$start.json"
+            cat "horizon-$start.json"
+            python -c "import json; p=json.load(open('horizon-$start.json')); assert p.get('ok'), p"
+          done
+
+      - name: Verify imported counts
+        run: |
+          curl -L --fail-with-body --max-time 60 \
+            -X POST \
+            "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-round4-result-import?mode=verify" \
+            -o verify.json
+          cat verify.json
+          python - <<'PY'
+          import json
+          p=json.load(open("verify.json"))
+          assert p.get("ok"), p
+          assert p["runs"] == 11, p
+          assert p["interval_predictions"] == 178868, p
+          assert p["horizon_predictions"] == 221080, p
+          print("Round4 import verified")
+          PY
