@@ -102,3 +102,34 @@ using(true) with check(true);
 
 revoke all on research.artifact_import_authorizations from public,anon,authenticated;
 grant select,insert,update,delete on research.artifact_import_authorizations to service_role;
+
+
+create table if not exists research.artifact_import_chunks (
+  importer_key text not null,
+  provider text not null,
+  provider_artifact_id text not null,
+  chunk_name text not null,
+  sha256 text not null,
+  phase text not null check(phase in ('prepare','candidates','events','finalize')),
+  row_count integer not null default 0,
+  status text not null default 'imported' check(status in ('imported','superseded')),
+  metadata jsonb not null default '{}'::jsonb,
+  imported_at timestamptz not null default now(),
+  primary key(importer_key,provider,provider_artifact_id,chunk_name),
+  foreign key(importer_key,provider,provider_artifact_id)
+    references research.artifact_import_authorizations(importer_key,provider,provider_artifact_id)
+    on delete cascade
+);
+
+create index if not exists artifact_import_chunks_artifact_idx
+  on research.artifact_import_chunks(importer_key,provider_artifact_id,phase);
+
+alter table research.artifact_import_chunks enable row level security;
+drop policy if exists service_role_all_artifact_import_chunks
+  on research.artifact_import_chunks;
+create policy service_role_all_artifact_import_chunks
+on research.artifact_import_chunks for all to service_role
+using(true) with check(true);
+
+revoke all on research.artifact_import_chunks from public,anon,authenticated;
+grant select,insert,update,delete on research.artifact_import_chunks to service_role;
