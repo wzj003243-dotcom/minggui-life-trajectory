@@ -68,14 +68,20 @@ def main() -> None:
     candidates_by_shard: dict[int, list[dict[str, str]]] = {}
     rules_by_shard: dict[int, list[dict[str, str]]] = {}
     reports: dict[int, dict] = {}
+    fetch_reports: dict[int, dict] = {}
 
     for path in args.artifacts:
         with open_zip(path) as z:
             report = json_obj(z, re.compile(r"(^|/)shard-\d+\.report\.json$"))
             shard = int(report["shard"])
+            fetch_report = json_obj(
+                z,
+                re.compile(r"biographies-shard-\d+\.report\.json$"),
+            )
             if shard in reports:
                 raise ValueError(f"duplicate shard artifact {shard}")
             reports[shard] = report
+            fetch_reports[shard] = fetch_report
             cohort_by_shard[shard] = csv_gz_rows(z, re.compile(r"cohort-shard-\d+\.csv\.gz$"))
             bios_by_shard[shard] = jsonl_gz_rows(z, re.compile(r"biographies-shard-\d+\.jsonl\.gz$"))
             candidates_by_shard[shard] = csv_gz_rows(z, re.compile(r"candidates-shard-\d+\.csv\.gz$"))
@@ -108,6 +114,25 @@ def main() -> None:
             errors.append(f"shard {shard}: candidate report mismatch")
         if int(rep.get("rule_event_rows", -1)) != len(rules):
             errors.append(f"shard {shard}: rule-event report mismatch")
+
+        fetch_rep = fetch_reports[shard]
+        failed_fetch = int(fetch_rep.get("failed_fetch_qids", 0) or 0)
+        if failed_fetch:
+            errors.append(
+                f"shard {shard}: {failed_fetch} Wikipedia biography fetch requests failed; retry required"
+            )
+        if int(fetch_rep.get("biographies_fetched", -1)) != len(bios):
+            errors.append(f"shard {shard}: fetch report biography count mismatch")
+        resolved = int(fetch_rep.get("resolved_sitelinks", -1))
+        requested = int(fetch_rep.get("requested_people", -1))
+        if requested != len(cohort):
+            errors.append(
+                f"shard {shard}: fetch report requested_people={requested} but cohort={len(cohort)}"
+            )
+        if resolved < len(bios):
+            errors.append(
+                f"shard {shard}: fetched biographies exceed resolved sitelinks"
+            )
 
         for r in cohort:
             q = (r.get("wikidata_id") or "").strip()
@@ -217,6 +242,7 @@ def main() -> None:
         "errors": errors,
         "warnings": warnings,
         "shards": {str(k): reports[k] for k in sorted(reports)},
+        "fetch_reports": {str(k): fetch_reports[k] for k in sorted(fetch_reports)},
         "totals": {
             "cohort_rows": len(all_cohort),
             "unique_cohort_people": len(cohort_set),
