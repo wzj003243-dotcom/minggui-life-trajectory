@@ -110,3 +110,17 @@ The v1.1 source snapshot uses observation cutoff **2026-10-06**.
 A biography rule event with `observable_from > 2026-10-06` remains fully preserved in the raw/candidate/event layer but is marked snapshot-model-ineligible. This is especially important for year-precision Wikipedia statements: a 2026 rule event uses `observable_from = 2026-12-31`, so it is conservatively excluded unless its timing can later be refined with stronger evidence.
 
 Future enrichment performed after this cutoff belongs in a later snapshot rather than silently extending v1.1.
+
+
+## Interrupted biography run lineage
+
+The first full-cohort 4-shard run (`37429050813`) was cancelled while shards 0 and 1 were streaming revision-pinned biography text. Shards 2 and 3 never started.
+
+The outer GitHub artifacts remained valid, while the inner streaming gzip files lacked a final footer. We recovered **only complete JSONL records** already written before cancellation; no partial JSON was repaired or invented:
+
+- shard 0 partial artifact `11398193051`, SHA-256 `3c3a678005980a9f4e63c20fae813dd73f76e8b575998b9c733c00bdc63cff96`: 438 complete biographies recovered from an 832-person shard.
+- shard 1 partial artifact `11398456161`, SHA-256 `443e863906e83426b61d678ad6cf8855bd4d74cbde43b2b103eed508b89259af`: 435 complete biographies recovered from an 886-person shard.
+
+The resume workflow (`v1.1 biography enrichment resume`) preserves those recovered revisions and re-evaluates only the remaining QIDs. Any remaining QID with no current enwiki/zhwiki sitelink stays explicitly missing rather than being synthesized.
+
+The interrupted artifact IDs and digests remain provenance only. Final v1.1 import authorization applies only to successfully completed resumed artifacts that pass the union audit.
