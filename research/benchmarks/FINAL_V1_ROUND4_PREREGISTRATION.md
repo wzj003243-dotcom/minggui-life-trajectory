@@ -1,24 +1,35 @@
-# Final v1 Round 4 preregistration — discrete trajectory hazard
+# Final v1 Round 4 preregistration — censor-aware trajectory
 
 Frozen before Round 4 test evaluation.
 
-## Dataset
+## Derived dataset
 
 - dataset: `next-canonical-event-discrete-hazard / v1.0-derived`
 - dataset ID: `731fa601-9c18-4ce8-9a8a-557ded47395d`
 - fingerprint: `9e2de5961856ad79ae260cb87fea1028f38b278c74eb3ff7669d94a35cf9f7c3`
-- source final-v1 dataset remains immutable
-- observation policy: `trajectory-observation-v1`
+- source dataset: frozen final-v1 classification/censor-aware dataset
+- source fingerprint: `a4752568b6145db7629c62b8a68b4a7f5116db79c2628e5e5d4d28b9e76ba888`
+- cutoff states used: 13,064
+- people: 3,382
+- person-period rows: 52,427
+- event rows within 20 years: 6,060
+- event-free risk rows: 46,367
 
-Risk intervals:
+No source row was deleted or mutated. Partial censor intervals do not receive false no-event labels.
 
-- (0, 1] years
-- (1, 3] years
-- (3, 5] years
-- (5, 10] years
-- (10, 20] years
+## Time grid
 
-Outcome per at-risk interval:
+Finite horizon: 20 years.
+
+Intervals:
+
+1. 0–1 year
+2. 1–3 years
+3. 3–5 years
+4. 5–10 years
+5. 10–20 years
+
+Outcomes per at-risk interval:
 
 - no_event
 - career
@@ -26,34 +37,29 @@ Outcome per at-risk interval:
 - relationship
 - other
 
-Partial censor intervals do not receive labels.
+The risk set stops after the first documented canonical target.
+
+## Split
+
+Use the frozen `person_hash_v1` person split. A person never crosses partitions.
+
+Round 4 performs no hyperparameter search.
 
 ## Models
 
-No hyperparameter search.
+1. interval empirical prior by interval index
+2. multinomial logistic regression, C=1, max_iter=5000, no class weights
+3. frozen `hgb_small` capacity:
+   - learning rate 0.05
+   - iterations 250
+   - max leaf nodes 15
+   - min leaf samples 30
+   - L2 2.0
+   - early stopping disabled
 
-1. interval-specific empirical train prior
-2. unweighted multinomial logistic regression, C=1.0
-3. frozen `hgb_small` capacity from Round 2:
-   - learning_rate 0.05
-   - max_iter 250
-   - max_leaf_nodes 15
-   - min_samples_leaf 30
-   - l2_regularization 2.0
-   - early_stopping false
+Primary probability models use no class balancing because class balancing would intentionally alter the empirical hazard distribution and degrade probability interpretation.
 
-No class balancing is used in Round 4 because the goal is calibrated hazard probability rather than balanced classification score.
-
-## Features
-
-Every model receives interval timing variables:
-
-- interval_index
-- interval_start_year
-- interval_end_year
-- interval_width_years
-
-Feature ablations:
+## Feature variants
 
 - history reality
 - raw birth calendar
@@ -61,39 +67,30 @@ Feature ablations:
 - history + BaZi
 - matched shuffled-BaZi placebo
 
-All non-time features come from the already-frozen cutoff feature snapshot.
+Only interval timing variables are added to the frozen cutoff feature snapshot:
 
-## Split
+- interval index
+- interval start year
+- interval end year
+- interval width
 
-Initial benchmark uses `person_hash_v1`.
-
-People do not cross train / validation / test.
-
-## Primary evaluation
-
-Interval-level likelihood is primary because the frozen risk-set construction already handles right censoring.
-
-Primary:
+## Primary interval metrics
 
 - multiclass log loss
 - multiclass Brier score
-- calibration error
+- ECE
 - event-vs-no-event Brier score
-
-Event-domain diagnostics on observed event intervals:
-
-- conditional domain log loss
-- conditional domain macro-F1
 
 Secondary:
 
 - accuracy
-- macro-F1
 - balanced accuracy
+- macro-F1
+- conditional event-domain log loss and macro-F1 among observed event rows
 
-## Horizon diagnostics
+## Cumulative trajectory diagnostics
 
-Conditional interval probabilities are chained into cumulative incidence at:
+Compose interval hazards into cumulative incidence at:
 
 - 1 year
 - 3 years
@@ -101,18 +98,20 @@ Conditional interval probabilities are chained into cumulative incidence at:
 - 10 years
 - 20 years
 
-For each horizon, evaluate the five-state distribution:
+For a horizon metric, exclude only cutoff states whose observation ends before the horizon with no known later target. A known later first target proves the preceding horizon event-free.
 
-- no event by horizon
-- career first event
-- recognition first event
-- relationship first event
-- other first event
+## Feature-comparison uncertainty
 
-Horizon scores use only cutoff states whose outcome is fully known at that horizon. They are diagnostic; interval likelihood remains the primary censor-aware score.
+On test predictions, use 1,000 person-cluster bootstrap replicates for:
+
+- history + BaZi versus history
+- BaZi versus raw calendar
+- true BaZi versus matched shuffled placebo
+
+Primary paired deltas are interval multiclass log loss and Brier score. Negative delta favors the first-named variant.
 
 ## Interpretation
 
-Round 4 asks whether the system can produce a useful probabilistic future trajectory, not whether BaZi can win a standalone benchmark.
+This round asks whether the system can produce calibrated probabilistic trajectories while respecting right censoring.
 
-History is expected to be the dominant state information. Raw calendar and BaZi remain explicitly separated so any prior contribution can be audited rather than hidden inside one model.
+It does not redefine the documented-event target as ground-truth destiny. BaZi remains experimental unless it adds stable probabilistic value beyond history/raw-calendar controls.
