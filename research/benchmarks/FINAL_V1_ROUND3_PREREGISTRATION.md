@@ -4,95 +4,88 @@ Frozen before any Round 3 holdout evaluation.
 
 ## Purpose
 
-Round 3 is an out-of-domain robustness test. It does not select or tune a new model.
+Round 3 tests out-of-domain generalization. No Round 3 holdout is used for model or hyperparameter selection.
 
-The model configuration is fixed from Round 2:
+## Fixed model
 
-- model family: `HistGradientBoostingClassifier`
-- configuration: `hgb_small`
-- learning rate: 0.05
-- iterations: 250
-- max leaves: 15
-- min leaf samples: 30
-- L2 regularization: 2.0
-- early stopping: disabled
-- seed: 20261006
+Round 2 selected `hgb_small` using validation only. Round 3 reuses it unchanged:
 
-No Round 3 validation or test result may alter these settings.
+- HistGradientBoostingClassifier
+- learning_rate = 0.05
+- max_iter = 250
+- max_leaf_nodes = 15
+- min_samples_leaf = 30
+- l2_regularization = 2.0
+- early_stopping = false
+- random seed = 20261006
 
-## Dataset and target
+Preprocessing is unchanged:
 
-- dataset: `next-observed-canonical-event-domain / v1.0-final`
+- numeric median imputation
+- categorical constant-missing imputation + dense one-hot
+- encoders fit on scenario train only
+- unknown validation/test categories ignored
+- balanced sample weights derived from scenario train labels only
+
+## Frozen dataset
+
 - dataset ID: `8261f970-adc3-4f9a-8043-9e0f6cb90be8`
 - dataset fingerprint: `a4752568b6145db7629c62b8a68b4a7f5116db79c2628e5e5d4d28b9e76ba888`
-- target: `career / recognition / relationship / other`
+- target: career / recognition / relationship / other
+- feature variants:
+  - history reality
+  - raw birth calendar
+  - objective BaZi
+  - history + BaZi
+  - matched shuffled-BaZi placebo
 
-Feature variants:
+## Holdouts
 
-1. history reality
-2. raw birth calendar
-3. objective BaZi
-4. history + BaZi
-5. scenario-specific matched shuffled-BaZi placebo
+Exactly three split scenarios are evaluated:
 
-## Holdout scenarios
+1. `forward_era_v1`
+2. `geo_us_holdout_v1`
+3. `geo_france_holdout_v1`
 
-### forward_era_v1
+Every scenario contains all four target classes in train, validation, and test.
 
-Observed classification rows:
+Observed test sizes before modeling:
 
-- train: 3,171 rows / 862 people
-- validation: 2,226 rows / 598 people
-- test: 2,068 rows / 612 people
+- forward era: 2,068 rows
+- US holdout: 1,637 rows
+- France holdout: 2,271 rows
 
-### geo_us_holdout_v1
-
-- train: 3,557 rows / 985 people
-- validation: 2,271 rows / 616 people
-- test: 1,637 rows / 471 people
-
-### geo_france_holdout_v1
-
-- train: 3,557 rows / 985 people
-- validation: 1,637 rows / 471 people
-- test: 2,271 rows / 616 people
-
-Geography semantics are the frozen split semantics already recorded in the training contract. They are not recomputed during Round 3.
-
-## Weighting and preprocessing
-
-For each scenario independently:
-
-- balanced sample weights are computed from that scenario's train labels only;
-- numeric imputation is fit on train only;
-- categorical one-hot vocabulary is fit on train only;
-- unknown validation/test categories are ignored;
-- no validation-based hyperparameter tuning occurs.
+These support counts are structural checks only and cannot be used to modify the model.
 
 ## Metrics
 
-For validation and test:
+Primary:
 
 - macro-F1
 - balanced accuracy
 - multiclass log loss
-- multiclass Brier score
-- 10-bin ECE
-- raw-domain macro-F1 diagnostic
 
-Within each scenario, test comparisons use 1,000 paired bootstrap replicates clustered by person:
+Calibration:
+
+- multiclass Brier
+- 10-bin ECE
+
+Diagnostic:
+
+- raw-domain macro-F1
+
+Within each holdout, three paired comparisons are reported using 1,000 bootstrap replicates clustered by person:
 
 - history + BaZi minus history
 - BaZi minus raw calendar
-- BaZi minus scenario-specific shuffled placebo
+- BaZi minus matched shuffled placebo
 
-## Scientific gates
+## Interpretation
 
-Round 3 asks whether conclusions survive domain shift:
+No scenario-specific tuning is allowed.
 
-1. Does history remain stronger than raw calendar?
-2. Does BaZi beat raw calendar?
-3. Does true BaZi beat its matched placebo?
-4. Does history + BaZi beat history?
+The most important Round 3 question is whether history-based trajectory signal remains useful under time/geography shift.
 
-No single scenario is allowed to redefine the model or feature construction.
+BaZi is considered to provide incremental evidence only if true BaZi beats its raw-calendar control and matched placebo, and history + BaZi improves over history alone.
+
+A result that succeeds only on the person-hash split but collapses under holdout is treated as evidence of cohort/source shortcut rather than durable life-trajectory structure.
