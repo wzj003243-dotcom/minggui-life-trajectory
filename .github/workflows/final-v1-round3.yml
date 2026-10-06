@@ -22,24 +22,29 @@ jobs:
       - name: Download frozen holdout rows
         run: |
           mkdir -p data/round3-export
-          for offset in 0 1000 2000 3000 4000 5000 6000 7000; do
-            curl -L --fail-with-body --max-time 120 \
-              "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-training-export-r3?offset=${offset}&limit=1000" \
-              -o "data/round3-export/chunk-${offset}.json"
+          for scenario in forward_era_v1 geo_us_holdout_v1 geo_france_holdout_v1; do
+            mkdir -p "data/round3-export/${scenario}"
+            for offset in 0 1000 2000 3000 4000 5000 6000 7000; do
+              curl -L --fail-with-body --max-time 120 \
+                "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-training-export-r3-holdouts?scenario=${scenario}&offset=${offset}&limit=1000" \
+                -o "data/round3-export/${scenario}/chunk-${offset}.json"
+            done
           done
           python - <<'PY'
           import json, pathlib
-          total=0
-          for p in sorted(pathlib.Path("data/round3-export").glob("chunk-*.json")):
-              rows=json.load(open(p))
-              assert isinstance(rows,list), p
-              total += len(rows)
-          print("rows",total)
-          assert total == 7465,total
+          root=pathlib.Path("data/round3-export")
+          for d in sorted(p for p in root.iterdir() if p.is_dir()):
+              total=0
+              for p in sorted(d.glob("chunk-*.json")):
+                  rows=json.load(open(p))
+                  assert isinstance(rows,list), p
+                  total += len(rows)
+              print(d.name,total)
+              assert total == 7465, (d.name,total)
           PY
       - name: Install benchmark dependencies
         run: pip install "pandas>=2.2,<3" "numpy>=2.0,<3" "scikit-learn>=1.6,<2" "joblib>=1.4,<2"
-      - name: Run frozen Round 3 robustness benchmark
+      - name: Run preregistered round 3 OOD benchmark
         run: |
           python research/models/benchmark_final_v1_round3.py \
             data/round3-export \
