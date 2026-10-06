@@ -43,7 +43,7 @@ DATASET_FINGERPRINT = "a4752568b6145db7629c62b8a68b4a7f5116db79c2628e5e5d4d28b9e
 PLACEBO_FINGERPRINT = "3010d4188445645271ca771980f8947d20f96362f96f6b286e256610887cdd0e"
 SCENARIO = "person_hash_v1"
 SEED = 20261006
-CLASSES = ["career", "recognition", "relationship", "other"]
+CLASSES = ["career", "other", "recognition", "relationship"]
 VARIANTS = [
     "history_reality_v1",
     "raw_birth_calendar_v1",
