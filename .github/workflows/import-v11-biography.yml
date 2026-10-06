@@ -53,8 +53,15 @@ jobs:
           import json
           ctl=json.load(open("research/snapshots/v11-biography-import-control.json"))
           audit=json.load(open("data/v11-audit/v11-biography-audit.json"))
-          manifest=json.load(open("data/v11-audit/import-chunks/import-manifest.json"))
+          import hashlib
+          manifest_path="data/v11-audit/import-chunks/import-manifest.json"
+          manifest_bytes=open(manifest_path,"rb").read()
+          actual_manifest_sha=hashlib.sha256(manifest_bytes).hexdigest()
+          manifest=json.loads(manifest_bytes)
           assert audit["status"]=="pass", audit
+          assert actual_manifest_sha==ctl["audit_manifest_sha256"],(
+              actual_manifest_sha,ctl["audit_manifest_sha256"]
+          )
           assert str(manifest["source_workflow_run_id"])==str(ctl["source_workflow_run_id"])
           assert manifest["target_snapshot_id"]==ctl["target_snapshot_id"]
           for x in ctl["shards"]:
