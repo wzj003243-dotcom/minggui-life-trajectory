@@ -1,0 +1,87 @@
+name: Audit v1.1 biography fallback 8-shard
+
+on:
+  workflow_run:
+    workflows: ["v1.1 biography enrichment fallback 8-shard"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all eight shard artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          mkdir -p data/v11-biography-shards
+          for shard in 0 1 2 3 4 5 6 7; do
+            gh run download "$RUN_ID" \
+              --repo "${{ github.repository }}" \
+              --name "minggui-v11-biography8-shard-$shard" \
+              --dir "data/v11-biography-shards/shard-$shard"
+            (
+              cd "data/v11-biography-shards/shard-$shard"
+              zip -qr "../shard-$shard.zip" .
+            )
+          done
+
+      - name: Audit shard union
+        run: |
+          python research/audits/audit_v11_biography_shards.py \
+            --expected-shards 8 \
+            data/v11-biography-shards/shard-0.zip \
+            data/v11-biography-shards/shard-1.zip \
+            data/v11-biography-shards/shard-2.zip \
+            data/v11-biography-shards/shard-3.zip \
+            data/v11-biography-shards/shard-4.zip \
+            data/v11-biography-shards/shard-5.zip \
+            data/v11-biography-shards/shard-6.zip \
+            data/v11-biography-shards/shard-7.zip \
+            --out data/v11-biography-audit
+
+      - name: Record exact artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/artifacts" \
+            > data/v11-biography-audit/github-artifacts.json
+          sha256sum data/v11-biography-shards/shard-*.zip \
+            > data/v11-biography-audit/local-repacked-sha256.txt
+
+      - name: Prepare hash-addressed import chunks
+        env:
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          python research/import/prepare_v11_biography_import.py \
+            --artifact-metadata data/v11-biography-audit/github-artifacts.json \
+            --source-run-id "$RUN_ID" \
+            --source-git-sha "$HEAD_SHA" \
+            --expected-shards 8 \
+            --out data/v11-biography-audit/import-chunks \
+            data/v11-biography-shards/shard-0.zip \
+            data/v11-biography-shards/shard-1.zip \
+            data/v11-biography-shards/shard-2.zip \
+            data/v11-biography-shards/shard-3.zip \
+            data/v11-biography-shards/shard-4.zip \
+            data/v11-biography-shards/shard-5.zip \
+            data/v11-biography-shards/shard-6.zip \
+            data/v11-biography-shards/shard-7.zip
+
+      - name: Upload union audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-v11-biography-union-audit
+          path: data/v11-biography-audit/
+          retention-days: 30
+          if-no-files-found: error
