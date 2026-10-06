@@ -1,0 +1,214 @@
+name: v1.1 biography enrichment resume
+
+on:
+  push:
+    branches:
+      - "data-run-v11-biography-resume*"
+    paths:
+      - "research/acquire/TRIGGER_V11_BIOGRAPHY_RESUME.md"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: v11-biography-enrichment-resume
+  cancel-in-progress: false
+
+jobs:
+  biography:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0, 1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download final identity core
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11341368186/zip" \
+            -o identity.zip
+          echo "c39faf8249a723e0528cb91acbfc812fcc00373df63a8c7be6e90df4363153ef  identity.zip" | sha256sum -c -
+          mkdir -p identity data/processed/v11-biography
+          unzip -q identity.zip -d identity
+          cp identity/timed_linked_cohort.csv.gz data/processed/v11-biography/timed_linked_cohort.csv.gz
+          cp identity/timed_canonical_births.csv.gz data/processed/v11-biography/timed_canonical_births.csv.gz
+
+      - name: Build deterministic 4-way cohort
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python - <<'PY'
+          import csv,gzip,os,pathlib
+          shard=int(os.environ["SHARD"])
+          src=pathlib.Path("data/processed/v11-biography/timed_linked_cohort.csv.gz")
+          dst=pathlib.Path(f"data/processed/v11-biography/cohort-shard-{shard}.csv.gz")
+          with gzip.open(src,"rt",encoding="utf-8",newline="") as f:
+              r=csv.DictReader(f); fields=r.fieldnames or []
+              rows=[row for row in r
+                    if (row.get("wikidata_id") or "").startswith("Q")
+                    and (row.get("wikidata_id") or "")[1:].isdigit()
+                    and int((row.get("wikidata_id") or "")[1:])%4==shard]
+          with gzip.open(dst,"wt",encoding="utf-8",newline="") as w:
+              cw=csv.DictWriter(w,fieldnames=fields);cw.writeheader();cw.writerows(rows)
+          print({"shard":shard,"cohort_rows":len(rows)})
+          assert rows
+          PY
+
+      - name: Recover completed prefix for interrupted shards 0/1
+        if: ${{ matrix.shard < 2 }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          if [ "$SHARD" = "0" ]; then
+            AID=11398193051
+            SHA=3c3a678005980a9f4e63c20fae813dd73f76e8b575998b9c733c00bdc63cff96
+          else
+            AID=11398456161
+            SHA=443e863906e83426b61d678ad6cf8855bd4d74cbde43b2b103eed508b89259af
+          fi
+          curl -L --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/$AID/zip" \
+            -o "partial-$SHARD.zip"
+          echo "$SHA  partial-$SHARD.zip" | sha256sum -c -
+          python research/acquire/recover_partial_biography_artifact.py \
+            "partial-$SHARD.zip" "$SHARD" data/processed/v11-biography
+
+      - name: Prepare full remaining cohort for untouched shards 2/3
+        if: ${{ matrix.shard >= 2 }}
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          cp "data/processed/v11-biography/cohort-shard-$SHARD.csv.gz" \
+             "data/processed/v11-biography/remaining-cohort-shard-$SHARD.csv.gz"
+          python - <<'PY'
+          import gzip,json,os,pathlib
+          s=int(os.environ["SHARD"]); root=pathlib.Path("data/processed/v11-biography")
+          with gzip.open(root/f"recovered-biographies-shard-{s}.jsonl.gz","wt",encoding="utf-8"):
+              pass
+          (root/f"recovery-shard-{s}.json").write_text(json.dumps({
+              "shard":s,"recovered_complete_biographies":0,
+              "policy":"untouched shard; full cohort remains"
+          },indent=2),encoding="utf-8")
+          PY
+
+      - name: Fetch only remaining biographies
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python research/acquire/fetch_wikipedia_biographies.py \
+            "data/processed/v11-biography/remaining-cohort-shard-$SHARD.csv.gz" \
+            "data/processed/v11-biography/new-biographies-shard-$SHARD.jsonl.gz" \
+            --id-column wikidata_id \
+            --limit 0 \
+            --batch-size 5
+
+      - name: Merge recovered and newly fetched revisions
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python - <<'PY'
+          import gzip,json,os,pathlib
+          s=int(os.environ["SHARD"]); root=pathlib.Path("data/processed/v11-biography")
+          srcs=[root/f"recovered-biographies-shard-{s}.jsonl.gz",root/f"new-biographies-shard-{s}.jsonl.gz"]
+          rows=[];seen=set()
+          for p in srcs:
+              with gzip.open(p,"rt",encoding="utf-8") as f:
+                  for line in f:
+                      if not line.strip(): continue
+                      r=json.loads(line); q=str(r.get("person_id") or "").strip()
+                      if not q: raise SystemExit(f"missing QID in {p}")
+                      if q in seen: raise SystemExit(f"duplicate QID across recovered/new: {q}")
+                      seen.add(q);rows.append(r)
+          out=root/f"biographies-shard-{s}.jsonl.gz"
+          with gzip.open(out,"wt",encoding="utf-8") as w:
+              for r in rows:w.write(json.dumps(r,ensure_ascii=False)+"\n")
+          print({"shard":s,"merged_biographies":len(rows)})
+          PY
+
+      - name: Install parser
+        run: pip install mwparserfromhell==0.7.2
+
+      - name: Extract timeline candidates
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python research/extraction/extract_timeline_candidates.py \
+            "data/processed/v11-biography/biographies-shard-$SHARD.jsonl.gz" \
+            "data/processed/v11-biography/candidates-shard-$SHARD.csv.gz"
+
+      - name: Convert precision-first rule events
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python research/extraction/candidates_to_rule_events.py \
+            "data/processed/v11-biography/candidates-shard-$SHARD.csv.gz" \
+            data/processed/v11-biography/timed_canonical_births.csv.gz \
+            "data/processed/v11-biography/rule-events-shard-$SHARD.csv.gz"
+
+      - name: Build final shard report
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python - <<'PY'
+          import csv,gzip,json,os,pathlib
+          s=int(os.environ["SHARD"]);root=pathlib.Path("data/processed/v11-biography")
+          def n_csv(p):
+              with gzip.open(p,"rt",encoding="utf-8",newline="") as f:return sum(1 for _ in csv.DictReader(f))
+          def n_jsonl(p):
+              with gzip.open(p,"rt",encoding="utf-8") as f:return sum(1 for x in f if x.strip())
+          rec=json.loads((root/f"recovery-shard-{s}.json").read_text())
+          new=n_jsonl(root/f"new-biographies-shard-{s}.jsonl.gz")
+          total=n_jsonl(root/f"biographies-shard-{s}.jsonl.gz")
+          cohort=n_csv(root/f"cohort-shard-{s}.csv.gz")
+          report={
+            "shard":s,"shards":4,
+            "cohort_rows":cohort,
+            "recovered_complete_biographies":int(rec.get("recovered_complete_biographies",0)),
+            "new_biographies_fetched":new,
+            "biographies_fetched":total,
+            "missing_biography_people":cohort-total,
+            "candidate_rows":n_csv(root/f"candidates-shard-{s}.csv.gz"),
+            "rule_event_rows":n_csv(root/f"rule-events-shard-{s}.csv.gz"),
+            "source_snapshot_parent":"42628250-3a51-4b92-b4bd-12c7dec846a8",
+            "v11_working_snapshot":"7fce3b79-ebfc-40b2-a5f0-e91b28db6a02",
+            "identity_artifact_id":"11341368186",
+            "identity_artifact_sha256":"c39faf8249a723e0528cb91acbfc812fcc00373df63a8c7be6e90df4363153ef",
+            "resume_policy":"recover complete prefix from cancelled run for shards 0/1; fetch only missing QIDs; batch-size=5"
+          }
+          (root/f"shard-{s}.report.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
+          print(json.dumps(report,indent=2))
+          PY
+
+      - name: Upload final shard artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-v11-biography-shard-${{ matrix.shard }}
+          path: |
+            data/processed/v11-biography/cohort-shard-${{ matrix.shard }}.csv.gz
+            data/processed/v11-biography/biographies-shard-${{ matrix.shard }}.jsonl.gz
+            data/processed/v11-biography/candidates-shard-${{ matrix.shard }}.csv.gz
+            data/processed/v11-biography/rule-events-shard-${{ matrix.shard }}.csv.gz
+            data/processed/v11-biography/shard-${{ matrix.shard }}.report.json
+            data/processed/v11-biography/recovery-shard-${{ matrix.shard }}.json
+            data/processed/v11-biography/new-biographies-shard-${{ matrix.shard }}.report.json
+          retention-days: 30
+          if-no-files-found: error
