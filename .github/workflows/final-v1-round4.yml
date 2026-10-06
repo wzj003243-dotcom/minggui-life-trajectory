@@ -1,0 +1,74 @@
+name: Final v1 benchmark round 4 trajectory
+
+on:
+  push:
+    branches:
+      - "data-run-final-v1-round4*"
+    paths:
+      - "research/training/TRIGGER_FINAL_V1_ROUND4.md"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download frozen Round 4 cutoffs
+        run: |
+          mkdir -p data/round4-export
+          for offset in $(seq 0 1000 13000); do
+            curl -L --fail-with-body --max-time 120 \
+              "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-training-export-round4?kind=cutoffs&offset=${offset}&limit=1000" \
+              -o "data/round4-export/cutoffs-${offset}.json"
+          done
+
+      - name: Download frozen Round 4 person-period rows
+        run: |
+          for offset in $(seq 0 2500 50000); do
+            curl -L --fail-with-body --max-time 120 \
+              "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-training-export-round4?kind=periods&offset=${offset}&limit=2500" \
+              -o "data/round4-export/periods-${offset}.json"
+          done
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path("data/round4-export")
+          cutoffs=sum(len(json.load(open(p))) for p in root.glob("cutoffs-*.json"))
+          periods=sum(len(json.load(open(p))) for p in root.glob("periods-*.json"))
+          print("cutoffs",cutoffs,"periods",periods)
+          assert cutoffs == 13064, cutoffs
+          assert periods == 52427, periods
+          PY
+
+      - name: Install benchmark dependencies
+        run: pip install "pandas>=2.2,<3" "numpy>=2.0,<3" "scikit-learn>=1.6,<2" "joblib>=1.4,<2"
+
+      - name: Run preregistered Round 4 trajectory benchmark
+        run: |
+          python research/models/benchmark_final_v1_round4.py \
+            data/round4-export \
+            data/round4-results \
+            | tee data/round4-results.log
+
+      - name: Show summary
+        if: always()
+        run: |
+          cat data/round4-results/round4_summary.json || true
+          cat data/round4-results/SHA256SUMS.json || true
+
+      - name: Upload benchmark artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-final-v1-round4
+          path: |
+            data/round4-results/
+            data/round4-results.log
+          retention-days: 14
+          if-no-files-found: error
