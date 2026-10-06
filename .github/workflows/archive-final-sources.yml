@@ -1,0 +1,56 @@
+name: Archive final source artifacts
+
+on:
+  push:
+    branches:
+      - "data-run-archive-final-sources*"
+    paths:
+      - "research/acquire/TRIGGER_ARCHIVE_FINAL_SOURCES.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  archive:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: final-identity-core
+            artifact_id: "11341368186"
+            sha256: "c39faf8249a723e0528cb91acbfc812fcc00373df63a8c7be6e90df4363153ef"
+          - label: timed-core-multisource
+            artifact_id: "11332091633"
+            sha256: "508d7456f903590d7748a4514350c8fd02d483c9379b3349f50cb73b0f3015fd"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download frozen ${{ matrix.label }} artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -L --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/${{ matrix.artifact_id }}/zip" \
+            -o artifact.zip
+          echo "${{ matrix.sha256 }}  artifact.zip" | sha256sum -c -
+      - name: Archive ${{ matrix.label }} to private storage
+        run: |
+          curl -L --fail-with-body \
+            --max-time 600 \
+            -X POST \
+            -H "Content-Type: application/zip" \
+            --data-binary @artifact.zip \
+            "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-archive-approved-artifact" \
+            | tee archive-result.json
+          python - <<'PY'
+          import json
+          p=json.load(open("archive-result.json"))
+          if not p.get("ok"):
+              raise SystemExit(p)
+          print(json.dumps(p,indent=2))
+          PY
