@@ -84,3 +84,20 @@ Do not canonicalize or freeze v1.1 until all planned biography shards have been:
 5. audited for shard overlap, identity misses, invalid/pre-birth events, and source revision completeness.
 
 Only then recompute canonical events, membership hashes, counts, eligibility, and a new training dataset.
+
+
+## Wikipedia revision supersession policy
+
+Wikipedia biography enrichment is revision-pinned. A person may therefore have an older v1.0 revision and a newer v1.1 revision.
+
+v1.1 preserves **all** old raw events, candidates, evidence, and memberships, but the model-facing snapshot must not count multiple Wikipedia revisions of the same biography simultaneously.
+
+For every person with a successfully fetched v1.1 biography revision:
+
+- previous `rule-from-revision-text` Wikipedia events remain stored;
+- their v1.1 `dataset_event_membership.snapshot_model_eligible` is set to `false`;
+- `exclusion_reason = superseded_by_v11_biography_revision`;
+- metadata records the superseding v1.1 artifact and revision;
+- rule events extracted from the current revision become the active v1.1 Wikipedia narrative layer.
+
+This is a snapshot-local eligibility change. It never mutates or deletes the frozen v1.0 snapshot and never deletes historical evidence.
