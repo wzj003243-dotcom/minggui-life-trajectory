@@ -14,7 +14,7 @@ permissions:
 jobs:
   import:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Download exact round2 artifact
@@ -30,7 +30,7 @@ jobs:
           echo "39337ab164b62a7301eae7c7ca260d48065751f7bcad482efd2c552d80ed46bd  round2.zip" | sha256sum -c -
       - name: Import frozen round2 bundle
         run: |
-          curl -L --fail-with-body --max-time 600 \
+          curl -L --fail-with-body --max-time 900 \
             -X POST \
             -H "Content-Type: application/zip" \
             --data-binary @round2.zip \
