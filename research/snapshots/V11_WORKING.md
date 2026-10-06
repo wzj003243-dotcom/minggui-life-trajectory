@@ -101,3 +101,12 @@ For every person with a successfully fetched v1.1 biography revision:
 - rule events extracted from the current revision become the active v1.1 Wikipedia narrative layer.
 
 This is a snapshot-local eligibility change. It never mutates or deletes the frozen v1.0 snapshot and never deletes historical evidence.
+
+
+## Observation cutoff
+
+The v1.1 source snapshot uses observation cutoff **2026-10-06**.
+
+A biography rule event with `observable_from > 2026-10-06` remains fully preserved in the raw/candidate/event layer but is marked snapshot-model-ineligible. This is especially important for year-precision Wikipedia statements: a 2026 rule event uses `observable_from = 2026-12-31`, so it is conservatively excluded unless its timing can later be refined with stronger evidence.
+
+Future enrichment performed after this cutoff belongs in a later snapshot rather than silently extending v1.1.
