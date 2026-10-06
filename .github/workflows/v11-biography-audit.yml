@@ -1,0 +1,62 @@
+name: Audit v1.1 biography shards
+
+on:
+  workflow_run:
+    workflows: ["v1.1 biography enrichment sharded"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all four shard artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          mkdir -p data/v11-biography-shards
+          for shard in 0 1 2 3; do
+            gh run download "$RUN_ID" \
+              --repo "${{ github.repository }}" \
+              --name "minggui-v11-biography-shard-$shard" \
+              --dir "data/v11-biography-shards/shard-$shard"
+            (
+              cd "data/v11-biography-shards/shard-$shard"
+              zip -qr "../shard-$shard.zip" .
+            )
+          done
+
+      - name: Audit shard union
+        run: |
+          python research/audits/audit_v11_biography_shards.py \
+            data/v11-biography-shards/shard-0.zip \
+            data/v11-biography-shards/shard-1.zip \
+            data/v11-biography-shards/shard-2.zip \
+            data/v11-biography-shards/shard-3.zip \
+            --out data/v11-biography-audit
+
+      - name: Record exact artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/artifacts" \
+            > data/v11-biography-audit/github-artifacts.json
+          sha256sum data/v11-biography-shards/shard-*.zip \
+            > data/v11-biography-audit/local-repacked-sha256.txt
+
+      - name: Upload union audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-v11-biography-union-audit
+          path: data/v11-biography-audit/
+          retention-days: 30
+          if-no-files-found: error
