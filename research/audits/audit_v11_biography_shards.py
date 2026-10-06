@@ -1,4 +1,4 @@
-"""Audit the four v1.1 Wikipedia biography shard artifacts before import.
+"""Audit a complete v1.1 Wikipedia biography shard set before import.
 
 The audit is deliberately artifact-first: it validates the raw cohort partitions,
 revision-pinned biography records, high-recall candidates, and precision-first rule
@@ -113,7 +113,7 @@ def main() -> None:
             q = (r.get("wikidata_id") or "").strip()
             if not QID.match(q):
                 errors.append(f"shard {shard}: invalid cohort QID {q!r}")
-            elif int(q[1:]) % 4 != shard:
+            elif int(q[1:]) % args.expected_shards != shard:
                 errors.append(f"shard {shard}: QID assigned to wrong shard: {q}")
 
         all_cohort.extend((shard, r) for r in cohort)
