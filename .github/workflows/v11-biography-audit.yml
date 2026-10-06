@@ -68,6 +68,36 @@ jobs:
             data/v11-biography-shards/shard-2.zip \
             data/v11-biography-shards/shard-3.zip
 
+      - name: Build generated import control
+        env:
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          AUDIT_RUN_ID: ${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path("data/v11-biography-audit")
+          manifest=json.load(open(root/"import-chunks/import-manifest.json"))
+          sha=(root/"import-chunks/import-manifest.sha256").read_text().split()[0]
+          ctl={
+            "target_snapshot_id":"7fce3b79-ebfc-40b2-a5f0-e91b28db6a02",
+            "source_workflow_run_id":str(os.environ["SOURCE_RUN_ID"]),
+            "audit_workflow_run_id":str(os.environ["AUDIT_RUN_ID"]),
+            "audit_manifest_sha256":sha,
+            "shards":[
+              {
+                "shard":int(s),
+                "artifact_id":str(info["provider_artifact_id"]),
+                "sha256":info["source_artifact_sha256"]
+              }
+              for s,info in sorted(manifest["shards"].items(),key=lambda kv:int(kv[0]))
+            ]
+          }
+          (root/"import-control.generated.json").write_text(
+            json.dumps(ctl,indent=2)+"\n",encoding="utf-8"
+          )
+          print(json.dumps(ctl,indent=2))
+          PY
+
       - name: Upload union audit
         uses: actions/upload-artifact@v4
         with:
