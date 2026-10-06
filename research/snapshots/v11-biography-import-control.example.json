@@ -1,0 +1,28 @@
+{
+  "target_snapshot_id": "7fce3b79-ebfc-40b2-a5f0-e91b28db6a02",
+  "source_workflow_run_id": "<source-run-id>",
+  "audit_workflow_run_id": "<audit-run-id>",
+  "audit_manifest_sha256": "<sha256>",
+  "shards": [
+    {
+      "shard": 0,
+      "artifact_id": "<artifact-id>",
+      "sha256": "<artifact-sha256>"
+    },
+    {
+      "shard": 1,
+      "artifact_id": "<artifact-id>",
+      "sha256": "<artifact-sha256>"
+    },
+    {
+      "shard": 2,
+      "artifact_id": "<artifact-id>",
+      "sha256": "<artifact-sha256>"
+    },
+    {
+      "shard": 3,
+      "artifact_id": "<artifact-id>",
+      "sha256": "<artifact-sha256>"
+    }
+  ]
+}
