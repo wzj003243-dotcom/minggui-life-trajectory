@@ -16,7 +16,6 @@ import zipfile
 from collections import Counter, defaultdict
 from pathlib import Path
 
-SHARDS = {0, 1, 2, 3}
 QID = re.compile(r"^Q\d+$")
 
 
@@ -58,9 +57,11 @@ def json_obj(z: zipfile.ZipFile, pattern: re.Pattern[str]) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("artifacts", nargs="+", type=Path)
+    ap.add_argument("--expected-shards", type=int, default=4)
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
+    expected_shards = set(range(args.expected_shards))
 
     cohort_by_shard: dict[int, list[dict[str, str]]] = {}
     bios_by_shard: dict[int, list[dict]] = {}
@@ -81,8 +82,8 @@ def main() -> None:
             rules_by_shard[shard] = csv_gz_rows(z, re.compile(r"rule-events-shard-\d+\.csv\.gz$"))
 
     found = set(reports)
-    if found != SHARDS:
-        raise ValueError(f"expected shards {SHARDS}, got {found}")
+    if found != expected_shards:
+        raise ValueError(f"expected shards {expected_shards}, got {found}")
 
     errors: list[str] = []
     warnings: list[str] = []
@@ -92,7 +93,7 @@ def main() -> None:
     all_candidates = []
     all_rules = []
 
-    for shard in sorted(SHARDS):
+    for shard in sorted(expected_shards):
         cohort = cohort_by_shard[shard]
         bios = bios_by_shard[shard]
         cand = candidates_by_shard[shard]
