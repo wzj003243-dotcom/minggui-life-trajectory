@@ -28,6 +28,13 @@ async function findJson(zip,pattern){
   if(!path)return {path:null,value:null};
   return {path,value:JSON.parse(await zip.file(path).async("text"))};
 }
+async function findGzipJsonl(zip,pattern){
+  const path=Object.keys(zip.files).find(p=>pattern.test(p));
+  if(!path)throw new Error("missing "+pattern);
+  const text=await gunzipText(await zip.file(path).async("uint8array"));
+  const rows=text.split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));
+  return {path,rows};
+}
 function parseYearOnly(raw){
   const years=uniq(String(raw||"").split("|").map(x=>x.trim()).filter(x=>/^\d{4}$/.test(x)));
   if(years.length!==1)return {years,min:null,max:null,precision:"ambiguous"};
@@ -92,10 +99,11 @@ Deno.serve(async(req)=>{
 
     const storagePath=await archive(body,artifactId,sha);
     const zip=await JSZip.loadAsync(body);
+    const biographiesFile=await findGzipJsonl(zip,/biographies-shard-\d+\.jsonl\.gz$/);
     const candidatesFile=await findGzipCsv(zip,/candidates-shard-\d+\.csv\.gz$/);
     const rulesFile=await findGzipCsv(zip,/rule-events-shard-\d+\.csv\.gz$/);
     const reportFile=await findJson(zip,/(^|\/)shard-\d+\.report\.json$/);
-    const candidatesRaw=candidatesFile.rows,rulesRaw=rulesFile.rows,report=reportFile.value||{};
+    const biographiesRaw=biographiesFile.rows,candidatesRaw=candidatesFile.rows,rulesRaw=rulesFile.rows,report=reportFile.value||{};
     const shard=String(report.shard??auth[0].metadata?.shard??"unknown");
 
     if(report.candidate_rows!==undefined&&Number(report.candidate_rows)!==candidatesRaw.length)throw new Error("candidate report mismatch");
@@ -109,6 +117,12 @@ Deno.serve(async(req)=>{
     const pmap=new Map(people.map(x=>[x.wikidata_id,{id:Number(x.person_id),birth:x.birth_date}]));
     const ruleByCandidate=new Map(rulesRaw.map(r=>[String(r.candidate_id),String(r.event_id)]));
     const candidateById=new Map(candidatesRaw.map(r=>[String(r.candidate_id),r]));
+    const currentRevisionByPerson=new Map();
+    for(const b of biographiesRaw){
+      const person=pmap.get(String(b.person_id||"").trim());
+      const revision=String(b.revision_id||"").trim();
+      if(person&&revision)currentRevisionByPerson.set(person.id,revision);
+    }
 
     const revisionMap=new Map();let unmatchedCandidatePeople=0;
     for(const r of candidatesRaw){
@@ -185,6 +199,26 @@ Deno.serve(async(req)=>{
         });
       }
       importedEvents=events.length;
+
+      // Snapshot-local revision replacement:
+      // preserve all historical/raw Wikipedia events and evidence, but do not let
+      // multiple revisions for the same person simultaneously contribute labels.
+      for(const [personId,currentRevision] of currentRevisionByPerson.entries()){
+        await tx.unsafe(
+          "update research.dataset_event_membership dem set "+
+          "snapshot_model_eligible=false, "+
+          "exclusion_reason='superseded_by_v11_biography_revision', "+
+          "metadata=coalesce(dem.metadata,'{}'::jsonb)||jsonb_build_object("+
+            "'superseded_by_v11_artifact',$3::text,'superseded_by_revision',$4::text,'superseded_at',now()::text) "+
+          "from research.life_events e "+
+          "where dem.dataset_snapshot_id=$1::uuid and dem.event_id=e.id and e.person_id=$2 "+
+          "and e.source_family='wikipedia' "+
+          "and coalesce(e.extraction_method,'')='rule-from-revision-text' "+
+          "and coalesce(e.attributes->>'revision_id','')<>$4",
+          [EXPECTED_TARGET,personId,artifactId,currentRevision]
+        );
+      }
+
       await execBatches(tx,
         "insert into research.life_events(event_key,person_id,domain,event_type,event_date_min,event_date_max,temporal_precision,age_min,age_max,age_mid,observable_from,subject_external_id,source_family,extraction_method,confidence,source_rank,reference_count,attributes,source_snapshot_id,source_url,model_eligible,quality_flags) "+
         "select x.event_key,x.person_id,x.domain,x.event_type,x.event_date_min::date,x.event_date_max::date,x.temporal_precision,x.age_min,x.age_max,x.age_mid,x.observable_from::date,x.subject_external_id,x.source_family,x.extraction_method,x.confidence,x.source_rank,x.reference_count,x.attributes,x.source_snapshot_id::uuid,x.source_url,x.model_eligible,x.quality_flags "+
@@ -224,7 +258,7 @@ Deno.serve(async(req)=>{
         [EXPECTED_TARGET,artifactId,shard]);
       await tx.unsafe(
         "insert into research.artifact_registry(artifact_key,provider,provider_artifact_id,artifact_name,artifact_kind,sha256,size_bytes,storage_bucket,storage_path,status,metadata,archived_at,imported_at) values($1,'github-actions',$2,$3,'wikipedia-biography-v11-shard',$4,$5,'research-artifacts',$6,'imported',$7::jsonb,now(),now()) on conflict(artifact_key) do update set storage_path=excluded.storage_path,status='imported',metadata=research.artifact_registry.metadata||excluded.metadata,archived_at=coalesce(research.artifact_registry.archived_at,now()),imported_at=now()",
-        ["github-actions:"+artifactId+":"+sha,artifactId,"minggui-v11-biography-shard-"+shard,sha,body.length,storagePath,JSON.stringify({shard,report,candidate_rows:candidatesRaw.length,rule_event_rows:rulesRaw.length,imported_candidates:importedCandidates,imported_events:importedEvents,source_revisions:sources.length,unmatched_candidate_people:unmatchedCandidatePeople,unmatched_rule_people:unmatchedRulePeople,prebirth_rule_events:prebirth,target_snapshot_id:EXPECTED_TARGET})]);
+        ["github-actions:"+artifactId+":"+sha,artifactId,"minggui-v11-biography-shard-"+shard,sha,body.length,storagePath,JSON.stringify({shard,report,candidate_rows:candidatesRaw.length,rule_event_rows:rulesRaw.length,imported_candidates:importedCandidates,imported_events:importedEvents,source_revisions:sources.length,biographies_fetched:biographiesRaw.length,current_revision_people:currentRevisionByPerson.size,unmatched_candidate_people:unmatchedCandidatePeople,unmatched_rule_people:unmatchedRulePeople,prebirth_rule_events:prebirth,target_snapshot_id:EXPECTED_TARGET})]);
       await tx.unsafe(
         "update research.artifact_import_authorizations set status='imported',imported_at=now(),metadata=metadata||jsonb_build_object('storage_path',$4::text,'shard',$5::text,'candidate_rows',$6::int,'rule_event_rows',$7::int) where importer_key=$1 and provider='github-actions' and provider_artifact_id=$2 and sha256=$3",
         [IMPORTER_KEY,artifactId,sha,storagePath,shard,candidatesRaw.length,rulesRaw.length]);
@@ -234,7 +268,7 @@ Deno.serve(async(req)=>{
       "select (select count(*)::int from research.dataset_event_membership where dataset_snapshot_id=$1::uuid) raw_event_memberships,(select count(*)::int from research.dataset_event_membership where dataset_snapshot_id=$1::uuid and snapshot_model_eligible) model_eligible_memberships,(select count(*)::int from research.event_candidates where metadata->>'v11_artifact_id'=$2) artifact_candidates,(select count(*)::int from research.life_events where attributes->>'v11_artifact_id'=$2) artifact_events",
       [EXPECTED_TARGET,artifactId]);
     await sql.end({timeout:5});
-    return Response.json({ok:true,artifact_id:artifactId,sha256:sha,shard,storage_path:storagePath,report,candidate_rows:candidatesRaw.length,rule_event_rows:rulesRaw.length,imported_candidates:importedCandidates,imported_events:importedEvents,source_revisions:sources.length,unmatched_candidate_people:unmatchedCandidatePeople,unmatched_rule_people:unmatchedRulePeople,prebirth_rule_events:prebirth,counts:counts[0]});
+    return Response.json({ok:true,artifact_id:artifactId,sha256:sha,shard,storage_path:storagePath,report,candidate_rows:candidatesRaw.length,rule_event_rows:rulesRaw.length,imported_candidates:importedCandidates,imported_events:importedEvents,source_revisions:sources.length,biographies_fetched:biographiesRaw.length,current_revision_people:currentRevisionByPerson.size,unmatched_candidate_people:unmatchedCandidatePeople,unmatched_rule_people:unmatchedRulePeople,prebirth_rule_events:prebirth,counts:counts[0]});
   }catch(e){
     try{await sql.end({timeout:2})}catch{}
     return Response.json({ok:false,error:String(e?.stack||e)},{status:500});
