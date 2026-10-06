@@ -17,7 +17,6 @@ import re
 import zipfile
 from pathlib import Path
 
-SHARDS = range(4)
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -81,10 +80,12 @@ def main() -> None:
     ap.add_argument("--artifact-metadata", type=Path, required=True)
     ap.add_argument("--source-run-id", required=True)
     ap.add_argument("--source-git-sha", required=True)
+    ap.add_argument("--expected-shards", type=int, default=4)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("artifacts", nargs="+", type=Path)
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
+    expected_shards = range(args.expected_shards)
 
     metadata = json.loads(args.artifact_metadata.read_text(encoding="utf-8"))
     artifact_rows = metadata.get("artifacts") or []
@@ -96,7 +97,7 @@ def main() -> None:
         if not m:
             raise ValueError(f"cannot identify shard from {path}")
         zips[int(m.group(1))] = path
-    if set(zips) != set(SHARDS):
+    if set(zips) != set(expected_shards):
         raise ValueError(f"expected four shard zips, got {sorted(zips)}")
 
     manifest: dict = {
@@ -105,10 +106,11 @@ def main() -> None:
         "source_git_sha": str(args.source_git_sha),
         "target_snapshot_id": "7fce3b79-ebfc-40b2-a5f0-e91b28db6a02",
         "importer_key": "v11-biography-shard-v1",
+        "expected_artifact_count": int(args.expected_shards),
         "shards": {},
     }
 
-    for shard in SHARDS:
+    for shard in expected_shards:
         artifact_name = f"minggui-v11-biography-shard-{shard}"
         meta = by_name.get(artifact_name)
         if not meta:
@@ -254,6 +256,13 @@ def main() -> None:
             "status=case when research.artifact_import_authorizations.status='imported' then 'imported' else 'approved' end,"
             "metadata=research.artifact_import_authorizations.metadata||excluded.metadata;"
         )
+    sql_lines.append(
+        "update research.dataset_snapshots set metadata=metadata||jsonb_build_object("
+        "'v11_biography_expected_artifacts'," + str(int(args.expected_shards)) + ","
+        "'v11_biography_source_workflow_run','" + str(args.source_run_id).replace("'", "''") + "',"
+        "'v11_biography_import_manifest_sha256','" + manifest_sha + "') "
+        "where id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid;"
+    )
     sql_lines += ["commit;", ""]
     (args.out / "artifact-authorizations.sql").write_text(
         "\n".join(sql_lines), encoding="utf-8"
