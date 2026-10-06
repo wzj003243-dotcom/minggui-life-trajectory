@@ -2,7 +2,7 @@ name: Audit v1.1 biography shards
 
 on:
   workflow_run:
-    workflows: ["v1.1 biography enrichment sharded"]
+    workflows: ["v1.1 biography enrichment sharded", "v1.1 biography enrichment resume"]
     types: [completed]
 
 permissions:
