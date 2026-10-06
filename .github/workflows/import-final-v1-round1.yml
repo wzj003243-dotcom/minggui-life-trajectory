@@ -25,9 +25,9 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11389063741/zip" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11389687413/zip" \
             -o round1.zip
-          echo "e6e4da170a0496d8194be62e8a930197068aeb90f0e8bb6dd4d6c56e96ad5c8a  round1.zip" | sha256sum -c -
+          echo "e39ef02bd94cbab2d767d9c786679d48528b4317e85fbdccf12d3b9d822ba387  round1.zip" | sha256sum -c -
       - name: Import frozen round1 bundle
         run: |
           curl -L --fail-with-body --max-time 600 \
