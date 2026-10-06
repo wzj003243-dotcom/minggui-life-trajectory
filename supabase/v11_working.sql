@@ -2,11 +2,11 @@
 
 -- This file records the live v1.1 working snapshot. Frozen v1.0 is never mutated.
 insert into research.dataset_snapshots(
-  id,dataset_key,version,status,person_count,event_count,model_event_count,metadata
+  id,dataset_key,version,status,person_count,event_count,model_event_count,observation_cutoff_date,metadata
 )
 values(
   '7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid,
-  'timed-core','v1.1-working','draft',3398,31710,31512,
+  'timed-core','v1.1-working','draft',3398,31710,31512,date '2026-10-06',
   '{
     "parent_snapshot_id":"42628250-3a51-4b92-b4bd-12c7dec846a8",
     "parent_version":"v1.0-final-identity",
@@ -19,11 +19,14 @@ values(
     "baseline_event_membership_sha256":"be680992ce8b188f107cfac31f9c384311071701c032ca73722fe51de9712003",
     "baseline_canonical_sha256":"88f5bf90c86424a626e4c1bd7b14709c41170a0cc6fc48f9d400754b25ad4654",
     "purpose":"v1.1 enrichment branch; never mutate frozen v1.0",
+    "planned_observation_cutoff_date":"2026-10-06",
+    "cutoff_semantics":"events observable after 2026-10-06 remain preserved but snapshot-model-ineligible",
     "freeze_policy":"recompute counts, canonical facts, memberships, and fingerprints before v1.1 freeze"
   }'::jsonb
 )
 on conflict(dataset_key,version) do update set
   status='draft',
+  observation_cutoff_date=excluded.observation_cutoff_date,
   metadata=research.dataset_snapshots.metadata||excluded.metadata;
 
 insert into research.dataset_membership(dataset_snapshot_id,person_id,cohort_role,metadata)
