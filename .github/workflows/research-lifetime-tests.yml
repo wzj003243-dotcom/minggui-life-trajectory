@@ -8,6 +8,7 @@ on:
       - "research/models/lifetime_paths.py"
       - "research/models/build_annual_recurrent.py"
       - "research/models/fit_recurrent_lookup.py"
+      - "research/models/simulate_fitted_lifetime.py"
       - "research/benchmarks/data/v12_r6_dev_aggregates.json"
       - "research/benchmarks/results/v12_r6_dev_lookup.json"
       - "research/benchmarks/data/v12_r6_dev_lifetime_aggregates.json"
@@ -15,6 +16,7 @@ on:
       - "tests/test_lifetime_paths.py"
       - "tests/test_annual_recurrent.py"
       - "tests/test_fit_recurrent_lookup.py"
+      - "tests/test_simulate_fitted_lifetime.py"
       - ".github/workflows/research-lifetime-tests.yml"
   workflow_dispatch:
 
@@ -35,6 +37,7 @@ jobs:
           python -m unittest discover -s tests -p "test_lifetime_paths.py" -v
           python -m unittest discover -s tests -p "test_annual_recurrent.py" -v
           python -m unittest discover -s tests -p "test_fit_recurrent_lookup.py" -v
+          python -m unittest discover -s tests -p "test_simulate_fitted_lifetime.py" -v
       - name: Refit R6 lookup using committed train/validation aggregates
         run: |
           python research/models/fit_recurrent_lookup.py \
@@ -43,6 +46,7 @@ jobs:
           python research/models/fit_recurrent_lookup.py \
             research/benchmarks/data/v12_r6_dev_lifetime_aggregates.json \
             /tmp/r6-lifetime-replayed.json
+            /tmp/r6-lifetime-paths-smoke.json
       - name: Verify exact bin rates and validation metrics
         run: |
           python - <<'PY'
@@ -66,12 +70,28 @@ jobs:
           assert lifetime["supported_ages_inclusive"]==[18,87]
           print("Reproducibility verified: both 18–37 and 18–87 fits and metrics.")
           PY
+      - name: Smoke-test 18–87 trajectory rollout with fitted R6 model
+        run: |
+          python research/models/simulate_fitted_lifetime.py \
+            --model research/benchmarks/results/v12_r6_dev_lifetime_lookup.json \
+            --from-age 25 --to-age-exclusive 88 --paths 200 --seed 20261008 \
+            --output /tmp/r6-lifetime-paths-smoke.json
+          python - <<'PY'
+          import json
+          x=json.load(open("/tmp/r6-lifetime-paths-smoke.json"))
+          assert x["not_real_life_guarantee"]
+          assert x["source_observation_bias_not_corrected"]
+          assert x["multi_year_rollout_calibration_not_established"]
+          assert len(x["stagewise_documented_event_probabilities"]["stages"])==7
+          print("Research-only lifetime rollout smoke test passed.")
+          PY
       - name: Compile R6 research modules
         run: |
           python -m py_compile \
             research/models/lifetime_paths.py \
             research/models/build_annual_recurrent.py \
-            research/models/fit_recurrent_lookup.py
+            research/models/fit_recurrent_lookup.py \
+            research/models/simulate_fitted_lifetime.py
       - name: Archive exact training output
         uses: actions/upload-artifact@v4
         with:
