@@ -8,6 +8,7 @@ on:
       - "research/models/lifetime_paths.py"
       - "research/models/build_annual_recurrent.py"
       - "research/models/fit_recurrent_lookup.py"
+      - "research/ontology/event_granularity_v1.py"
       - "research/models/simulate_fitted_lifetime.py"
       - "research/benchmarks/data/v12_r6_dev_aggregates.json"
       - "research/benchmarks/results/v12_r6_dev_lookup.json"
@@ -17,6 +18,7 @@ on:
       - "tests/test_annual_recurrent.py"
       - "tests/test_fit_recurrent_lookup.py"
       - "tests/test_simulate_fitted_lifetime.py"
+      - "tests/test_event_granularity.py"
       - ".github/workflows/research-lifetime-tests.yml"
   workflow_dispatch:
 
@@ -38,6 +40,7 @@ jobs:
           python -m unittest discover -s tests -p "test_annual_recurrent.py" -v
           python -m unittest discover -s tests -p "test_fit_recurrent_lookup.py" -v
           python -m unittest discover -s tests -p "test_simulate_fitted_lifetime.py" -v
+          python -m unittest discover -s tests -p "test_event_granularity.py" -v
       - name: Refit R6 lookup using committed train/validation aggregates
         run: |
           python research/models/fit_recurrent_lookup.py \
@@ -90,7 +93,8 @@ jobs:
             research/models/lifetime_paths.py \
             research/models/build_annual_recurrent.py \
             research/models/fit_recurrent_lookup.py \
-            research/models/simulate_fitted_lifetime.py
+            research/models/simulate_fitted_lifetime.py \
+            research/ontology/event_granularity_v1.py
       - name: Archive exact training output
         uses: actions/upload-artifact@v4
         with:
