@@ -113,7 +113,7 @@ async function snapshot(sql){
 async function recordChunk(sql,artifactId,chunkName,sha,phase,rowCount,metadata={}){
   await sql.unsafe(
     "insert into research.artifact_import_chunks(importer_key,provider,provider_artifact_id,chunk_name,sha256,phase,row_count,status,metadata,imported_at) "+
-    "values($1,$2,$3,$4,$5,$6,$7,'imported',$8::jsonb,now()) "+
+    "values($1,$2,$3,$4,$5,$6,$7,'imported',($8::jsonb #>> '{}')::jsonb,now()) "+
     "on conflict(importer_key,provider,provider_artifact_id,chunk_name) do update set "+
     "sha256=excluded.sha256,phase=excluded.phase,row_count=excluded.row_count,status='imported',metadata=research.artifact_import_chunks.metadata||excluded.metadata,imported_at=now()",
     [IMPORTER_KEY,PROVIDER,artifactId,chunkName,sha,phase,rowCount,JSON.stringify(metadata)]
@@ -423,7 +423,7 @@ Deno.serve(async(req)=>{
         );
         await tx.unsafe(
           "insert into research.artifact_registry(artifact_key,provider,provider_artifact_id,artifact_name,artifact_kind,sha256,size_bytes,source_workflow_run_id,source_git_sha,storage_bucket,storage_path,status,metadata,archived_at,imported_at) "+
-          "values($1,$2,$3,$4,'wikipedia-biography-v11-shard',$5,$6,$7,$8,'research-artifacts',$9,'imported',$10::jsonb,now(),now()) "+
+          "values($1,$2,$3,$4,'wikipedia-biography-v11-shard',$5,$6,$7,$8,'research-artifacts',$9,'imported',($10::jsonb #>> '{}')::jsonb,now(),now()) "+
           "on conflict(artifact_key) do update set storage_path=excluded.storage_path,status='imported',metadata=research.artifact_registry.metadata||excluded.metadata,archived_at=coalesce(research.artifact_registry.archived_at,now()),imported_at=now()",
           [
             PROVIDER+":"+artifactId+":"+auth.sha256,PROVIDER,artifactId,
