@@ -1,0 +1,28 @@
+{
+  "target_snapshot_id": "7fce3b79-ebfc-40b2-a5f0-e91b28db6a02",
+  "source_workflow_run_id": "37712781470",
+  "audit_workflow_run_id": "37713063965",
+  "audit_manifest_sha256": "d52eaeb1f6eb57f1861480757d2df8d1e26c02b794c1a4c8a413229afc464673",
+  "shards": [
+    {
+      "shard": 0,
+      "artifact_id": "11522073073",
+      "sha256": "28ef47b658ef6f37bbf0c26f40f9ca27bedf9cd60277259bef64e7f53d42402b"
+    },
+    {
+      "shard": 1,
+      "artifact_id": "11522560880",
+      "sha256": "69bbf194c366eeaba7b2d3153481b0d7862d739d7fc8bbbc311139680dbaaeb5"
+    },
+    {
+      "shard": 2,
+      "artifact_id": "11522815760",
+      "sha256": "020a1b5e013c65cfa2837dec1a6113039ea4431e67c887f3011dc39be062b8ce"
+    },
+    {
+      "shard": 3,
+      "artifact_id": "11522064966",
+      "sha256": "1e2c43b9809549543c60f03be883cabad7bfe67fedd1a27d21d31f1fc995168e"
+    }
+  ]
+}
