@@ -93,6 +93,7 @@ jobs:
 
             curl -L --fail-with-body --max-time 150 \
               -X POST -H "Content-Type: application/zip" \
+              -H "Authorization: Bearer $GH_TOKEN" -H "X-Minggui-Authorized-Import: 1" \
               --data-binary @"source-$shard.zip" \
               "$ENDPOINT?mode=archive&artifact_id=$aid" \
               -o "archive-$shard.json"
@@ -107,6 +108,7 @@ jobs:
               echo "Importing $rel"
               curl -L --fail-with-body --max-time 150 \
                 -X POST -H "Content-Type: application/json" \
+                -H "Authorization: Bearer $GH_TOKEN" -H "X-Minggui-Authorized-Import: 1" \
                 --data-binary @"$file" \
                 "$ENDPOINT?mode=chunk&artifact_id=$aid&chunk_name=$enc" \
                 -o /tmp/chunk-result.json
