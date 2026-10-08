@@ -1,0 +1,32 @@
+name: MingGui lifetime trajectory research tests
+
+on:
+  push:
+    branches:
+      - "research/lifetime-recurrent-v12"
+    paths:
+      - "research/models/lifetime_paths.py"
+      - "research/models/build_annual_recurrent.py"
+      - "tests/test_lifetime_paths.py"
+      - "tests/test_annual_recurrent.py"
+      - ".github/workflows/research-lifetime-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run chronological and simulation unit tests
+        run: python -m unittest discover -s tests -p "test_*recurrent.py" -v
+      - name: Run lifetime simulator unit tests
+        run: python -m unittest discover -s tests -p "test_lifetime_paths.py" -v
+      - name: Compile research modules
+        run: python -m py_compile research/models/lifetime_paths.py research/models/build_annual_recurrent.py
