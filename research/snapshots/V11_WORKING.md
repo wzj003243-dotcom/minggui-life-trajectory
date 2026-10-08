@@ -151,3 +151,18 @@ The authoritative full-cohort source bundle must include four successful
 shard artifacts **from the same completed remainder workflow run**.
 The union audit and exact SHA authorization must PASS before any v1.1
 import. v1.0 stays unchanged and v1.1 remains draft during recovery.
+
+## Biography source revision cutoff
+
+The v1.1 observation cutoff is `2026-10-06`. A revision retrieved
+later may describe historically dated events but is not automatically
+admissible as evidence for a 2026-10-06 snapshot. The importer therefore:
+
+- preserves the full raw Wikipedia revision, candidates, and rule events;
+- marks rule events from revision timestamps after the snapshot cutoff
+  (or without a usable revision timestamp) as snapshot-model-ineligible;
+- only supersedes an older Wikipedia model-layer revision when the new
+  source revision timestamp is on/before the cutoff;
+- validates this again at the final freeze gate.
+
+This is strictly a model-eligibility decision, never raw data deletion.
