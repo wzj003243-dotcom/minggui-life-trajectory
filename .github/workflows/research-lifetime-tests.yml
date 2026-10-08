@@ -10,6 +10,8 @@ on:
       - "research/models/fit_recurrent_lookup.py"
       - "research/benchmarks/data/v12_r6_dev_aggregates.json"
       - "research/benchmarks/results/v12_r6_dev_lookup.json"
+      - "research/benchmarks/data/v12_r6_dev_lifetime_aggregates.json"
+      - "research/benchmarks/results/v12_r6_dev_lifetime_lookup.json"
       - "tests/test_lifetime_paths.py"
       - "tests/test_annual_recurrent.py"
       - "tests/test_fit_recurrent_lookup.py"
@@ -38,6 +40,9 @@ jobs:
           python research/models/fit_recurrent_lookup.py \
             research/benchmarks/data/v12_r6_dev_aggregates.json \
             /tmp/r6-replayed.json
+          python research/models/fit_recurrent_lookup.py \
+            research/benchmarks/data/v12_r6_dev_lifetime_aggregates.json \
+            /tmp/r6-lifetime-replayed.json
       - name: Verify exact bin rates and validation metrics
         run: |
           python - <<'PY'
@@ -54,7 +59,12 @@ jobs:
                   assert math.isclose(a,b,rel_tol=1e-11,abs_tol=1e-12),(path,a,b)
               else: assert a==b,(path,a,b)
           check(got,expected)
-          print("Reproducibility verified: train-only rates and validation losses.")
+          with open("/tmp/r6-lifetime-replayed.json") as f: lifetime=json.load(f)
+          with open("research/benchmarks/results/v12_r6_dev_lifetime_lookup.json") as f:
+              lifetime_expected=json.load(f)
+          check(lifetime,lifetime_expected)
+          assert lifetime["supported_ages_inclusive"]==[18,87]
+          print("Reproducibility verified: both 18–37 and 18–87 fits and metrics.")
           PY
       - name: Compile R6 research modules
         run: |
@@ -66,6 +76,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: minggui-r6-dev-lookup-replayed
-          path: /tmp/r6-replayed.json
+          path: |
+            /tmp/r6-replayed.json
+            /tmp/r6-lifetime-replayed.json
           retention-days: 30
           if-no-files-found: error
