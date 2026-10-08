@@ -3,6 +3,28 @@ import postgres from "npm:postgres@3.4.5";
 const IMPORTER_KEY="v11-biography-shard-v1";
 const PROVIDER="github-actions";
 const TARGET="7fce3b79-ebfc-40b2-a5f0-e91b28db6a02";
+const SOURCE_RUN="37712781470";
+
+async function verifyRepositoryActionsToken(req: Request): Promise<boolean> {
+  const auth=req.headers.get("Authorization")||"";
+  if(!/^Bearer [A-Za-z0-9_\-\.]+$/.test(auth))return false;
+  try {
+    const r=await fetch(
+      "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/runs/"+SOURCE_RUN,
+      {headers:{
+        Authorization:auth,
+        Accept:"application/vnd.github+json",
+        "X-GitHub-Api-Version":"2022-11-28",
+        "User-Agent":"MingGui-v11-authorized-artifact-import"
+      },signal:AbortSignal.timeout(8000)}
+    );
+    if(!r.ok)return false;
+    const j=await r.json();
+    return String(j.id)===SOURCE_RUN &&
+      j.repository?.full_name==="wzj003243-dotcom/minggui-life-trajectory" &&
+      j.conclusion==="success";
+  }catch{return false;}
+}
 
 const nil=(v)=>v===undefined||v===null||v===""||v==="nan"||v==="NaN"?null:v;
 const hex=(buf)=>Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
@@ -104,6 +126,8 @@ function expectedChunkSha(auth,chunkName){
 
 Deno.serve(async(req)=>{
   if(req.method!=="POST")return new Response("POST only",{status:405});
+  if(!(await verifyRepositoryActionsToken(req)))
+    return new Response("authorized repository actions token required",{status:403});
   const u=new URL(req.url);
   const mode=u.searchParams.get("mode")||"chunk";
   const artifactId=u.searchParams.get("artifact_id")||"";
