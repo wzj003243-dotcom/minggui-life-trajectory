@@ -7,54 +7,69 @@ WITH cohort AS (
         x_features_new->'four_pillars'->>'day_zhi' AS day_branch
  FROM research.v11_r5_cutoffs
  WHERE cutoff_age=18 AND split_name IN ('train','validation')
-), candidate_years AS (
+), facts AS (
+ SELECT e.person_id,e.event_type,e.event_date_min,e.event_date_max,e.observable_from,
+        extract(year from e.event_date_min)::int first_year,
+        extract(year from e.event_date_max)::int last_year,
+        greatest(
+          extract(year from e.event_date_max)::int+1,
+          extract(year from e.observable_from)::int+
+          CASE WHEN extract(month from e.observable_from)=1 AND
+                    extract(day from e.observable_from)=1 THEN 0 ELSE 1 END
+        )::int ready_year
+ FROM research.snapshot_canonical_event_facts e
+ JOIN cohort c ON c.person_id=e.person_id
+ WHERE e.dataset_snapshot_id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid
+   AND e.snapshot_model_eligible
+), event_years AS (
+ SELECT person_id,first_year yr,
+     count(*) FILTER(WHERE event_type IN (
+       'relationship.marriage','relationship.divorce',
+       'relationship.spouse.start','relationship.spouse.end'
+     ))::int relationship_events,
+     count(*) FILTER(WHERE event_type IN (
+       'career.position.start','career.position.end','career.team.start',
+       'career.team.end','career.employer.start','career.employer.end',
+       'career.appointment','career.role_start','career.retirement'
+     ))::int career_events
+ FROM facts WHERE first_year=last_year
+ GROUP BY 1,2
+), ambiguous_years AS (
+ SELECT f.person_id,g.yr,count(*)::int n
+ FROM facts f
+ CROSS JOIN LATERAL generate_series(f.first_year,f.last_year) g(yr)
+ WHERE f.first_year!=f.last_year GROUP BY 1,2
+), ready_years AS (
+ SELECT person_id,ready_year yr,count(*)::int newly_available
+ FROM facts GROUP BY 1,2
+), expanded_years AS (
  SELECT c.person_id,c.split_name,c.cutoff_date,c.observation_end_date,c.day_branch,
-        yrs.yr,
-        make_date(yrs.yr,1,1) AS d0,make_date(yrs.yr+1,1,1) AS d1,
-        yrs.yr - extract(year from c.cutoff_date)::int + 17
-        + CASE WHEN extract(month from c.cutoff_date)=1
-                     AND extract(day from c.cutoff_date)=1 THEN 1 ELSE 0 END AS age
+        yy.yr,make_date(yy.yr,1,1) d0,make_date(yy.yr+1,1,1) d1,
+        coalesce(ready.newly_available,0) newly_available
  FROM cohort c
  CROSS JOIN LATERAL generate_series(
-   extract(year from c.cutoff_date)::int,
-   least(extract(year from c.observation_end_date)::int,extract(year from c.cutoff_date)::int+71)
- ) yrs(yr)
- WHERE make_date(yrs.yr,1,1)>=c.cutoff_date
-   AND make_date(yrs.yr+1,1,1)<=c.observation_end_date
-   AND strpos('子丑寅卯辰巳午未申酉戌亥',c.day_branch)>0
+   extract(year from c.cutoff_date)::int-18,
+   extract(year from c.observation_end_date)::int
+ ) yy(yr)
+ LEFT JOIN ready_years ready ON ready.person_id=c.person_id AND ready.yr=yy.yr
+ WHERE strpos('子丑寅卯辰巳午未申酉戌亥',c.day_branch)>0
+), years_with_history AS (
+ SELECT x.*,
+        sum(newly_available) OVER(PARTITION BY person_id ORDER BY yr
+                                 ROWS UNBOUNDED PRECEDING)::int AS hn
+ FROM expanded_years x
 ), annual AS (
- SELECT y.person_id,y.split_name,y.day_branch,y.yr,y.age,y.d0,y.d1,
-  count(e.canonical_event_key) FILTER(
-    WHERE e.event_date_max<y.d0 AND e.observable_from<=y.d0
-  )::int AS hn,
-  count(e.canonical_event_key) FILTER(
-    WHERE e.event_date_min<y.d1 AND e.event_date_max>=y.d0
-      AND (e.event_date_min<y.d0 OR e.event_date_max>=y.d1)
-  )::int AS ambiguities,
-  count(e.canonical_event_key) FILTER(
-    WHERE e.event_date_min>=y.d0 AND e.event_date_max<y.d1
-      AND e.event_type IN (
-        'relationship.marriage','relationship.divorce',
-        'relationship.spouse.start','relationship.spouse.end'
-      )
-  )::int AS relationship_events,
-  count(e.canonical_event_key) FILTER(
-    WHERE e.event_date_min>=y.d0 AND e.event_date_max<y.d1
-      AND e.event_type IN (
-        'career.position.start','career.position.end','career.team.start',
-        'career.team.end','career.employer.start','career.employer.end',
-        'career.appointment','career.role_start','career.retirement'
-      )
-  )::int AS career_events
- FROM candidate_years y
- LEFT JOIN research.snapshot_canonical_event_facts e
-   ON e.dataset_snapshot_id='7fce3b79-ebfc-40b2-a5f0-e91b28db6a02'::uuid
-   AND e.snapshot_model_eligible AND e.person_id=y.person_id
-   AND (
-      (e.event_date_max<y.d0 AND e.observable_from<=y.d0)
-      OR (e.event_date_min<y.d1 AND e.event_date_max>=y.d0)
-   )
- GROUP BY y.person_id,y.split_name,y.day_branch,y.yr,y.age,y.d0,y.d1
+ SELECT y.person_id,y.split_name,y.day_branch,y.yr,y.hn,
+        y.yr-extract(year from y.cutoff_date)::int+17
+          + CASE WHEN extract(month from y.cutoff_date)=1 AND extract(day from y.cutoff_date)=1
+                 THEN 1 ELSE 0 END AS age,
+        coalesce(ev.relationship_events,0)::int relationship_events,
+        coalesce(ev.career_events,0)::int career_events,
+        coalesce(amb.n,0)::int ambiguities
+ FROM years_with_history y
+ LEFT JOIN event_years ev ON ev.person_id=y.person_id AND ev.yr=y.yr
+ LEFT JOIN ambiguous_years amb ON amb.person_id=y.person_id AND amb.yr=y.yr
+ WHERE y.d0>=y.cutoff_date AND y.d1<=y.observation_end_date
 ), rows AS (
  SELECT person_id,split_name,day_branch,yr,
   CASE WHEN age<28 THEN '18-27' WHEN age<38 THEN '28-37'
