@@ -1,0 +1,49 @@
+name: MingGui traditional-method research tests
+
+on:
+  push:
+    branches:
+      - "research/bazi-compositional-v1"
+    paths:
+      - "research/traditional/**"
+      - "tests/test_bazi_composition.py"
+      - ".github/workflows/research-tradition-tests.yml"
+  pull_request:
+    branches:
+      - "research/lifetime-recurrent-v12"
+    paths:
+      - "research/traditional/**"
+      - "tests/test_bazi_composition.py"
+      - ".github/workflows/research-tradition-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify symbolic feature compiler
+        run: |
+          python -m unittest discover -s tests -p 'test_bazi_composition.py' -v
+          python -m py_compile research/traditional/bazi_composition_v1.py
+      - name: Descriptive output smoke check
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, 'research/traditional')
+          from bazi_composition_v1 import compose
+          r=compose({'year':'甲子','month':'丙寅','day':'甲午','hour':None},
+                    age=28,luck_pillar='己未',luck_age_range=(21,30),
+                    annual_pillar='庚子',annual_calendar_year=2026)
+          assert r['prediction_probability'] is None
+          assert r['missing_hour']
+          assert r['cycle_relations']
+          print('Symbolic-only test passed: no fabricated probabilities or hours.')
+          PY
