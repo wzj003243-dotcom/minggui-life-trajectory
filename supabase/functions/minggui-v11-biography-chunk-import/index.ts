@@ -185,9 +185,13 @@ Deno.serve(async(req)=>{
           sources
         );
 
-        const revisions=[...pmap.entries()].map(([qid,p])=>{
+        // A source revision newer than the source snapshot cutoff is preserved,
+        // but may not supersede an older pre-cutoff revision in the model layer.
+        const revisions=[...pmap.entries()].flatMap(([qid,p])=>{
           const b=bios.find(x=>String(x.person_id||"").trim()===qid);
-          return {person_id:p.id,current_revision:String(b?.revision_id||"")};
+          const revisionDate=String(b?.revision_timestamp||"").slice(0,10);
+          if(!revisionDate||revisionDate>cutoff)return [];
+          return [{person_id:p.id,current_revision:String(b?.revision_id||"")}];
         });
         await insertJson(tx,
           "with x as (select * from jsonb_to_recordset($JSON) as q(person_id bigint,current_revision text)) "+
@@ -273,8 +277,10 @@ Deno.serve(async(req)=>{
         const amid=nil(r.age_mid)!==null?Number(r.age_mid):(amin!==null&&amax!==null?Math.round(((amin+amax)/2)*10000)/10000:null);
         const prebirth=amax!==null&&amax<0;
         const afterCutoff=Boolean(obs&&String(obs).slice(0,10)>cutoff);
+        const revisionDate=String(r.revision_timestamp||"").slice(0,10);
+        const sourceRevisionIneligible=!revisionDate||revisionDate>cutoff;
         const intrinsicEligible=Boolean(d0&&d1&&obs)&&!prebirth;
-        const snapshotEligible=intrinsicEligible&&!afterCutoff;
+        const snapshotEligible=intrinsicEligible&&!afterCutoff&&!sourceRevisionIneligible;
         const eventKey=String(r.event_id||"");
         const candidateKey="wikipedia:"+String(r.candidate_id||"");
         candidateKeys.push(candidateKey);
@@ -295,14 +301,15 @@ Deno.serve(async(req)=>{
           model_eligible:intrinsicEligible,
           quality_flags:{
             ...(prebirth?{prebirth_interval:true}:{}),
-            ...(afterCutoff?{after_snapshot_cutoff:true,snapshot_cutoff:cutoff}:{})
+            ...(afterCutoff?{after_snapshot_cutoff:true,snapshot_cutoff:cutoff}:{}),
+            ...(sourceRevisionIneligible?{source_revision_after_snapshot_cutoff:true,revision_date:revisionDate||null,snapshot_cutoff:cutoff}:{})
           },
           source_record_id:sid,evidence_text:String(r.evidence_text||""),
           evidence_locator:String(r.candidate_id||r.event_id),
           snapshot_model_eligible:snapshotEligible,
-          exclusion_reason:snapshotEligible?null:(prebirth?"prebirth_interval":afterCutoff?"after_snapshot_cutoff":"intrinsic_model_ineligible")
+          exclusion_reason:snapshotEligible?null:(prebirth?"prebirth_interval":afterCutoff?"after_snapshot_cutoff":sourceRevisionIneligible?"source_revision_after_snapshot_cutoff":"intrinsic_model_ineligible")
         });
-        membershipByKey.set(eventKey,{snapshotEligible,exclusionReason:snapshotEligible?null:(prebirth?"prebirth_interval":afterCutoff?"after_snapshot_cutoff":"intrinsic_model_ineligible")});
+        membershipByKey.set(eventKey,{snapshotEligible,exclusionReason:snapshotEligible?null:(prebirth?"prebirth_interval":afterCutoff?"after_snapshot_cutoff":sourceRevisionIneligible?"source_revision_after_snapshot_cutoff":"intrinsic_model_ineligible")});
       }
 
       await sql.begin(async tx=>{
