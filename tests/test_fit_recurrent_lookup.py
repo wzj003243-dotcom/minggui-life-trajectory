@@ -4,7 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "research" / "models"))
 
-from fit_recurrent_lookup import AGES, HISTORY, fit, age_bin, history_bin, intensity_from_model
+from fit_recurrent_lookup import AGES, LONG_AGES, HISTORY, fit, age_bin, history_bin, intensity_from_model
 from lifetime_paths import Event, simulate_paths
 
 
@@ -72,6 +72,22 @@ class LookupTests(unittest.TestCase):
         rows[0]["split_name"] = "test"
         with self.assertRaises(ValueError):
             fit(rows)
+
+    def test_lifetime_age_support_and_history_control(self):
+        rows = synthetic_rows()
+        long_rows = []
+        for age in LONG_AGES:
+            for r in rows:
+                if r["age_band"] == AGES[0]:
+                    long_rows.append({**r, "age_band": age})
+        m = fit(long_rows)
+        self.assertEqual(m["supported_ages_inclusive"], [18, 87])
+        self.assertEqual(age_bin(87, long=True), "78-87")
+        self.assertEqual(set(m["age_binary_history_rates"]["78-87"]), {"0", "1+"})
+        self.assertGreaterEqual(intensity_from_model(m, age=87, history_count=0)["career"], 0)
+        with self.assertRaises(ValueError):
+            intensity_from_model(m, age=88, history_count=0)
+        self.assertIn("age_binary_history", m["dev_validation_metrics"])
 
     def test_zero_event_domain_is_stable(self):
         m = fit(synthetic_rows())
