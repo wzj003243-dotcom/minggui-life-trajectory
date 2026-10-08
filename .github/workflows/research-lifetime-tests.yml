@@ -46,7 +46,6 @@ jobs:
           python research/models/fit_recurrent_lookup.py \
             research/benchmarks/data/v12_r6_dev_lifetime_aggregates.json \
             /tmp/r6-lifetime-replayed.json
-            /tmp/r6-lifetime-paths-smoke.json
       - name: Verify exact bin rates and validation metrics
         run: |
           python - <<'PY'
@@ -99,5 +98,6 @@ jobs:
           path: |
             /tmp/r6-replayed.json
             /tmp/r6-lifetime-replayed.json
+            /tmp/r6-lifetime-paths-smoke.json
           retention-days: 30
           if-no-files-found: error
