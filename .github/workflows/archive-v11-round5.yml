@@ -1,0 +1,59 @@
+name: Archive v1.1 Round 5 verified models
+
+on:
+  push:
+    branches:
+      - "data-run-v11-round5-archive*"
+    paths:
+      - "research/training/TRIGGER_V11_ROUND5_ARCHIVE.md"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify exact Round 5 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -L --fail-with-body --max-time 120 \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/wzj003243-dotcom/minggui-life-trajectory/actions/artifacts/11536022737/zip" \
+            -o round5.zip
+          echo "7df20c54887b76094f4d3428b227b623d779aea35644a3d4925aa1296749f00a  round5.zip" | sha256sum -c -
+
+      - name: Archive exact models, predictions, and metrics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -L --fail-with-body --max-time 150 -X POST \
+            -H "Content-Type: application/zip" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            --data-binary @round5.zip \
+            "https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-v11-round5-archive?artifact_id=11536022737" \
+            -o archive-result.json
+          python - <<'PY'
+          import json
+          p=json.load(open("archive-result.json"))
+          print(json.dumps(p,indent=2))
+          assert p.get("ok"),p
+          assert p.get("sha256")=="7df20c54887b76094f4d3428b227b623d779aea35644a3d4925aa1296749f00a"
+          assert len(p.get("models",{}))==3
+          PY
+
+      - name: Upload archive receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-v11-round5-archive-receipt
+          path: archive-result.json
+          retention-days: 30
+          if-no-files-found: error
