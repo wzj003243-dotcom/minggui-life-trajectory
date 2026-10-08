@@ -1,5 +1,9 @@
 # v1.1 working source snapshot
 
+## Final status: FROZEN
+
+This document preserves the **historical v1.1-working build log**. The source snapshot was frozen on 2026-10-08 UTC using `snapshot-freeze-v4`; all subsequent source changes must use a new version. The authoritative counts, fingerprints, audit and import lineage are recorded in [`V11_FROZEN_READINESS.md`](V11_FROZEN_READINESS.md).
+
 MingGui v1.0 remains immutable. All post-v1.0 enrichment is isolated in a copy-on-write v1.1 branch.
 
 ## Working snapshot
