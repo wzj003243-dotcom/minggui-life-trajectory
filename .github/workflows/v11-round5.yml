@@ -1,0 +1,96 @@
+name: v1.1 Round 5 matched trajectory training
+
+on:
+  push:
+    branches:
+      - "data-run-v11-round5*"
+    paths:
+      - "research/training/TRIGGER_V11_ROUND5.md"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download frozen matched cutoff rows
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENDPOINT: https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-v11-round5-export
+        run: |
+          set -euo pipefail
+          mkdir -p data/v11-round5-export
+          for offset in $(seq 0 500 13000); do
+            curl -L --fail-with-body --retry 2 --max-time 150 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              "$ENDPOINT?kind=cutoffs&offset=$offset&limit=500" \
+              -o "data/v11-round5-export/cutoffs-$(printf '%05d' "$offset").json"
+          done
+
+      - name: Download frozen matched person-period labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENDPOINT: https://nyafyhtwwxezzvbvtykv.supabase.co/functions/v1/minggui-v11-round5-export
+        run: |
+          set -euo pipefail
+          for offset in $(seq 0 1500 49500); do
+            curl -L --fail-with-body --retry 2 --max-time 150 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              "$ENDPOINT?kind=periods&offset=$offset&limit=1500" \
+              -o "data/v11-round5-export/periods-$(printf '%05d' "$offset").json"
+          done
+
+      - name: Audit exported row counts and disjoint person splits
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          from collections import defaultdict
+          root=pathlib.Path("data/v11-round5-export")
+          cuts=[r for p in sorted(root.glob("cutoffs-*.json")) for r in json.load(open(p))]
+          ints=[r for p in sorted(root.glob("periods-*.json")) for r in json.load(open(p))]
+          print({"cutoffs":len(cuts),"periods":len(ints),"event_periods":sum(r["outcome_class"]!="no_event" for r in ints)})
+          assert len(cuts)==13064,len(cuts)
+          assert len(ints)==49909,len(ints)
+          assert sum(r["outcome_class"]!="no_event" for r in ints)==7283
+          assert len(set(int(r["source_training_example_id"]) for r in cuts))==13064
+          split=defaultdict(set)
+          for r in cuts:split[int(r["person_id"])].add(r["split_name"])
+          assert all(len(x)==1 for x in split.values())
+          PY
+
+      - name: Install fixed benchmark dependencies
+        run: pip install "pandas>=2.2,<3" "numpy>=2.0,<3" "scikit-learn>=1.6,<2" "joblib>=1.4,<2"
+
+      - name: Run pre-registered two-arm trajectory benchmark
+        run: |
+          python research/models/benchmark_v11_round5.py \
+            data/v11-round5-export data/v11-round5-results \
+            | tee data/v11-round5-results.log
+
+      - name: Show headline metrics
+        if: always()
+        run: |
+          test ! -f data/v11-round5-results/round5_summary.json || \
+            python - <<'PY'
+          import json
+          j=json.load(open("data/v11-round5-results/round5_summary.json"))
+          print(json.dumps({"test":j["test_metrics"],"bootstrap":j["person_cluster_bootstrap_v11_minus_v10_history"]},indent=2))
+          PY
+
+      - name: Upload immutable experiment artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-v11-round5-matched-history
+          path: |
+            data/v11-round5-results/
+            data/v11-round5-results.log
+          retention-days: 30
+          if-no-files-found: error
