@@ -80,17 +80,29 @@ def fit(rows: list[dict]) -> dict:
     }
     ages = {}
     groups = {}
+    binary_groups = {}
     for a in bands:
         aged = [r for r in tr if r["age_band"] == a]
         n = sum(int(r["n"]) for r in aged)
         ages[a] = {}
         groups[a] = {}
+        binary_groups[a] = {}
         for d, (_, cc) in DOMAINS.items():
             # Age-shrunk estimate when few biographies are observed at this age.
             ages[a][d] = _safe_rate(
                 sum(int(r[cc]) for r in aged) + SHRINKAGE * global_rate[d],
                 n + SHRINKAGE,
             )
+        # Observation propensity control: no documented prior events vs some.
+        for binary in ("0", "1+"):
+            g = [r for r in aged if (r["hist_band"] == "0") == (binary == "0")]
+            size = sum(int(r["n"]) for r in g)
+            binary_groups[a][binary] = {
+                d: _safe_rate(
+                    sum(int(r[cc]) for r in g) + SHRINKAGE * ages[a][d],
+                    size + SHRINKAGE,
+                ) for d, (_, cc) in DOMAINS.items()
+            }
         for h in HISTORY:
             g = [r for r in aged if r["hist_band"] == h]
             size = sum(int(r["n"]) for r in g)
@@ -111,6 +123,7 @@ def fit(rows: list[dict]) -> dict:
         "train_exposure_person_years": total,
         "age_rates": ages,
         "age_history_rates": groups,
+        "age_binary_history_rates": binary_groups,
         "history_group_support": {
             a: {h: sum(int(r["n"]) for r in tr
                        if r["age_band"] == a and r["hist_band"] == h)
@@ -127,8 +140,12 @@ def fit(rows: list[dict]) -> dict:
                 observed_positive = int(r[poscol])
                 observed_events = int(r[countcol])
                 a, h = r["age_band"], r["hist_band"]
-                lam = (ages[a][domain] if arm == "age_only"
-                       else groups[a][h][domain])
+                if arm == "age_only":
+                    lam = ages[a][domain]
+                elif arm == "age_binary_history":
+                    lam = binary_groups[a]["0" if h == "0" else "1+"][domain]
+                else:
+                    lam = groups[a][h][domain]
                 rate = max(lam, 1e-12)
                 prob = min(max(-math.expm1(-lam), 1e-12), 1 - 1e-12)
                 loss += (-observed_positive * math.log(prob)
@@ -159,6 +176,7 @@ def fit(rows: list[dict]) -> dict:
 
     model["dev_validation_metrics"] = {
         "age_only": evaluate("age_only"),
+        "age_binary_history": evaluate("age_binary_history"),
         "age_plus_history": evaluate("age_plus_history"),
     }
     model["interpretation"] = (
