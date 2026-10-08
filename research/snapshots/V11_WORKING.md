@@ -124,3 +124,30 @@ The outer GitHub artifacts remained valid, while the inner streaming gzip files 
 The resume workflow (`v1.1 biography enrichment resume`) preserves those recovered revisions and re-evaluates only the remaining QIDs. Any remaining QID with no current enwiki/zhwiki sitelink stays explicitly missing rather than being synthesized.
 
 The interrupted artifact IDs and digests remain provenance only. Final v1.1 import authorization applies only to successfully completed resumed artifacts that pass the union audit.
+
+## October 7 remainder recovery
+
+The corrected 4-shard run `37449474737` also hit its 60-minute runner
+timeout while the safe single-title Wikipedia revision fetch was streaming
+shards 2 and 3. Shards 0 and 1 were mirrored successfully and remain valid.
+
+The incomplete raw fetches were preserved by the workflow's always-upload
+artifact step. The source ZIPs are pinned:
+
+- shard 2 partial artifact `11409712944`, SHA-256
+  `c5fe16b68666bec916bfafa37aa8be0d48235ddd16a2329e16650af5fa202e19`;
+  561 complete revision JSONL records recovered from an 860-person shard.
+- shard 3 partial artifact `11409573091`, SHA-256
+  `3a3edbbea67c47a2f7555cfcf01f8d26a38483a0b29e55ba723c33ea33539e97`;
+  569 complete revision JSONL records recovered from an 820-person shard.
+
+These are **provenance-only partial artifacts**, not final import candidates.
+The deterministic remainder workflow `v1.1 biography enrichment remainder`
+starts from complete JSONL objects only, excludes already-recovered QIDs,
+fetches only the residual cohort using the verified single-page API mode,
+rebuilds candidates and rule events, and emits final shard artifacts.
+
+The authoritative full-cohort source bundle must include four successful
+shard artifacts **from the same completed remainder workflow run**.
+The union audit and exact SHA authorization must PASS before any v1.1
+import. v1.0 stays unchanged and v1.1 remains draft during recovery.
