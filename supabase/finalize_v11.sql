@@ -35,6 +35,7 @@ declare
   v_facts integer;
   v_bad_future integer;
   v_bad_prebirth integer;
+  v_bad_source_revision integer;
   v_active_missing_bounds integer;
   v_missing_parent_people integer;
   v_missing_parent_events integer;
@@ -143,6 +144,24 @@ begin
 
   if v_bad_future<>0 then
     raise exception 'v1.1 has % active events beyond observation cutoff',v_bad_future;
+  end if;
+
+  -- A rule extracted from a revision published after cutoff may not be active,
+  -- even if the event described inside the article happened decades earlier.
+  select count(*)::int into v_bad_source_revision
+  from research.dataset_event_membership dem
+  join research.life_events e on e.id=dem.event_id
+  where dem.dataset_snapshot_id=v_snapshot
+    and dem.snapshot_model_eligible
+    and e.source_family='wikipedia'
+    and e.attributes ? 'v11_artifact_id'
+    and (
+      nullif(left(coalesce(e.attributes->>'revision_timestamp',''),10),'') is null
+      or left(e.attributes->>'revision_timestamp',10)>v_cutoff::text
+    );
+
+  if v_bad_source_revision<>0 then
+    raise exception 'v1.1 has % active events from revisions after snapshot cutoff',v_bad_source_revision;
   end if;
 
   select count(*)::int into v_bad_prebirth
