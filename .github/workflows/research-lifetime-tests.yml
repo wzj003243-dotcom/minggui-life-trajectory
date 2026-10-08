@@ -20,6 +20,16 @@ on:
       - "tests/test_simulate_fitted_lifetime.py"
       - "tests/test_event_granularity.py"
       - ".github/workflows/research-lifetime-tests.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "research/models/**"
+      - "research/ontology/**"
+      - "research/benchmarks/data/v12_r6_dev_*"
+      - "research/benchmarks/results/v12_r6_dev_*"
+      - "tests/test_*"
+      - ".github/workflows/research-lifetime-tests.yml"
   workflow_dispatch:
 
 permissions:
