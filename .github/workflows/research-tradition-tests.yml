@@ -6,6 +6,8 @@ on:
       - "research/bazi-compositional-v1"
     paths:
       - "research/traditional/**"
+      - "lib/traditional-luck-cycles.ts"
+      - "tests/traditional-luck-cycles.test.ts"
       - "tests/test_bazi_composition.py"
       - "tests/test_evaluate_r7a_fast.py"
       - "tests/test_evaluate_r7a_fast.py"
@@ -71,3 +73,18 @@ jobs:
           path: /tmp/r7a-replayed.json
           retention-days: 30
           if-no-files-found: error
+
+  calendar-and-dayun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install fixed calendar library dependency
+        run: npm install
+      - name: Compile TypeScript with strict settings
+        run: npm run typecheck
+      - name: Test actual LiChun and DaYun calculations
+        run: npx vitest run tests/traditional-luck-cycles.test.ts
