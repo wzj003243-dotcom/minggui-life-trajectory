@@ -7,8 +7,12 @@ on:
     paths:
       - "research/models/lifetime_paths.py"
       - "research/models/build_annual_recurrent.py"
+      - "research/models/fit_recurrent_lookup.py"
+      - "research/benchmarks/data/v12_r6_dev_aggregates.json"
+      - "research/benchmarks/results/v12_r6_dev_lookup.json"
       - "tests/test_lifetime_paths.py"
       - "tests/test_annual_recurrent.py"
+      - "tests/test_fit_recurrent_lookup.py"
       - ".github/workflows/research-lifetime-tests.yml"
   workflow_dispatch:
 
@@ -16,7 +20,7 @@ permissions:
   contents: read
 
 jobs:
-  unit:
+  unit-and-reproduction:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -24,9 +28,44 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Run chronological and simulation unit tests
-        run: python -m unittest discover -s tests -p "test_*recurrent.py" -v
-      - name: Run lifetime simulator unit tests
-        run: python -m unittest discover -s tests -p "test_lifetime_paths.py" -v
-      - name: Compile research modules
-        run: python -m py_compile research/models/lifetime_paths.py research/models/build_annual_recurrent.py
+      - name: Run all isolated research unit tests
+        run: |
+          python -m unittest discover -s tests -p "test_lifetime_paths.py" -v
+          python -m unittest discover -s tests -p "test_annual_recurrent.py" -v
+          python -m unittest discover -s tests -p "test_fit_recurrent_lookup.py" -v
+      - name: Refit R6 lookup using committed train/validation aggregates
+        run: |
+          python research/models/fit_recurrent_lookup.py \
+            research/benchmarks/data/v12_r6_dev_aggregates.json \
+            /tmp/r6-replayed.json
+      - name: Verify exact bin rates and validation metrics
+        run: |
+          python - <<'PY'
+          import json, math
+          with open("/tmp/r6-replayed.json") as f: got=json.load(f)
+          with open("research/benchmarks/results/v12_r6_dev_lookup.json") as f: expected=json.load(f)
+          def check(a,b,path="root"):
+              if isinstance(a,dict):
+                  assert isinstance(b,dict),path
+                  for key in b: assert key in a,(path,key)
+                  for key in b: check(a[key],b[key],path+"."+key)
+              elif isinstance(a,(int,float)) and not isinstance(a,bool):
+                  assert isinstance(b,(int,float)),path
+                  assert math.isclose(a,b,rel_tol=1e-11,abs_tol=1e-12),(path,a,b)
+              else: assert a==b,(path,a,b)
+          check(got,expected)
+          print("Reproducibility verified: train-only rates and validation losses.")
+          PY
+      - name: Compile R6 research modules
+        run: |
+          python -m py_compile \
+            research/models/lifetime_paths.py \
+            research/models/build_annual_recurrent.py \
+            research/models/fit_recurrent_lookup.py
+      - name: Archive exact training output
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-r6-dev-lookup-replayed
+          path: /tmp/r6-replayed.json
+          retention-days: 30
+          if-no-files-found: error
