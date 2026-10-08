@@ -1,0 +1,350 @@
+{
+  "protocol": "minggui-r6-annual-recurrent-lookup-dev-v1",
+  "label_scope": "retrospectively_documented_canonical_events_only",
+  "source_snapshot": "7fce3b79-ebfc-40b2-a5f0-e91b28db6a02",
+  "supported_ages_inclusive": [
+    18,
+    37
+  ],
+  "shrinkage_pseudoyears": 200,
+  "train_exposure_person_years": 38610,
+  "age_rates": {
+    "18-24": {
+      "career": 0.0024746685312643357,
+      "recognition": 0.0012145445765043119,
+      "relationship": 0.001716045359576262,
+      "other": 0.010020863322285257
+    },
+    "25-29": {
+      "career": 0.004874495511199631,
+      "recognition": 0.00103794111284748,
+      "relationship": 0.002670122520309786,
+      "other": 0.025139830383276076
+    },
+    "30-34": {
+      "career": 0.008764334633945131,
+      "recognition": 0.0014844636798396432,
+      "relationship": 0.0017057009350281587,
+      "other": 0.030135011909642195
+    },
+    "35-37": {
+      "career": 0.010511120243777941,
+      "recognition": 0.0014422191601992408,
+      "relationship": 0.0012892085231767216,
+      "other": 0.031164840880025222
+    }
+  },
+  "age_history_rates": {
+    "18-24": {
+      "0": {
+        "career": 0.0019187080950403331,
+        "recognition": 0.0007883750354231374,
+        "relationship": 0.0014792911183823998,
+        "other": 0.0030709802682068453
+      },
+      "1": {
+        "career": 0.0032115334343967663,
+        "recognition": 0.0001419689744598845,
+        "relationship": 0.0019539503634805684,
+        "other": 0.01169150944737408
+      },
+      "2-4": {
+        "career": 0.008007407805825713,
+        "recognition": 0.006669774482159041,
+        "relationship": 0.0035718045640120216,
+        "other": 0.04808138105177035
+      },
+      "5+": {
+        "career": 0.0011377786350640624,
+        "recognition": 0.0051561124489675,
+        "relationship": 0.0030878369469316143,
+        "other": 0.10345786819415415
+      }
+    },
+    "25-29": {
+      "0": {
+        "career": 0.0018456996150184842,
+        "recognition": 0.0004943878271531282,
+        "relationship": 0.0022401394118467875,
+        "other": 0.008019106978522691
+      },
+      "1": {
+        "career": 0.004139405995394615,
+        "recognition": 0.0019036131884685437,
+        "relationship": 0.003877759349591666,
+        "other": 0.02256852586151645
+      },
+      "2-4": {
+        "career": 0.0070261838042509125,
+        "recognition": 0.002053513586792251,
+        "relationship": 0.002262499682498052,
+        "other": 0.04995388353178951
+      },
+      "5+": {
+        "career": 0.028192068685806353,
+        "recognition": 0.0016231024496901828,
+        "relationship": 0.004750032935567147,
+        "other": 0.12906984687722475
+      }
+    },
+    "30-34": {
+      "0": {
+        "career": 0.0028941515573744307,
+        "recognition": 0.0009731568502605051,
+        "relationship": 0.0004301194537948983,
+        "other": 0.00625151614586229
+      },
+      "1": {
+        "career": 0.007823844740361366,
+        "recognition": 0.001409136647833085,
+        "relationship": 0.005117263918408363,
+        "other": 0.017807976921428492
+      },
+      "2-4": {
+        "career": 0.014795060629929899,
+        "recognition": 0.0011421644634350713,
+        "relationship": 0.0021586972585806224,
+        "other": 0.03333018517251538
+      },
+      "5+": {
+        "career": 0.028401490989972293,
+        "recognition": 0.004737828923048237,
+        "relationship": 0.0020940431010783825,
+        "other": 0.16013148692480184
+      }
+    },
+    "35-37": {
+      "0": {
+        "career": 0.006860827320394398,
+        "recognition": 0.0007810388505255455,
+        "relationship": 0.00042929751011445196,
+        "other": 0.006905449889421517
+      },
+      "1": {
+        "career": 0.008941280990919044,
+        "recognition": 0.00028334364640456597,
+        "relationship": 0.0002532826175199846,
+        "other": 0.015945941233796702
+      },
+      "2-4": {
+        "career": 0.018846371154336166,
+        "recognition": 0.0016523060159132478,
+        "relationship": 0.0037962755990146894,
+        "other": 0.024716944531411586
+      },
+      "5+": {
+        "career": 0.012224468736116755,
+        "recognition": 0.004331761446504896,
+        "relationship": 0.0012705471763993378,
+        "other": 0.12952825068283338
+      }
+    }
+  },
+  "history_group_support": {
+    "18-24": {
+      "0": 11524,
+      "1": 1511,
+      "2-4": 736,
+      "5+": 235
+    },
+    "25-29": {
+      "0": 6288,
+      "1": 1485,
+      "2-4": 1362,
+      "5+": 544
+    },
+    "30-34": {
+      "0": 5243,
+      "1": 1430,
+      "2-4": 1811,
+      "5+": 918
+    },
+    "35-37": {
+      "0": 2730,
+      "1": 818,
+      "2-4": 1185,
+      "5+": 790
+    }
+  },
+  "dev_validation_metrics": {
+    "age_only": {
+      "career": {
+        "years": 8289,
+        "positive_years": 31,
+        "events": 44,
+        "binary_log_loss": 0.024554562493726336,
+        "binary_brier": 0.0037287614992399477,
+        "count_nll_without_factorial": 0.032879875382940675,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "recognition": {
+        "years": 8289,
+        "positive_years": 7,
+        "events": 7,
+        "binary_log_loss": 0.0069301926176371115,
+        "binary_brier": 0.0008440365443338982,
+        "count_nll_without_factorial": 0.006930717300498392,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "relationship": {
+        "years": 8289,
+        "positive_years": 14,
+        "events": 14,
+        "binary_log_loss": 0.012390967950664305,
+        "binary_brier": 0.001685802612722688,
+        "count_nll_without_factorial": 0.012392709396942234,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "other": {
+        "years": 8289,
+        "positive_years": 108,
+        "events": 147,
+        "binary_log_loss": 0.07031533541902901,
+        "binary_brier": 0.012919420504537777,
+        "count_nll_without_factorial": 0.08720602490378075,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "macro_binary_log_loss": 0.02854776462026419,
+      "macro_binary_brier": 0.004794505290208578
+    },
+    "age_binary_history": {
+      "career": {
+        "years": 8289,
+        "positive_years": 31,
+        "events": 44,
+        "binary_log_loss": 0.023901026105327672,
+        "binary_brier": 0.003723847845839716,
+        "count_nll_without_factorial": 0.03167426285813869,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "recognition": {
+        "years": 8289,
+        "positive_years": 7,
+        "events": 7,
+        "binary_log_loss": 0.006365660936506236,
+        "binary_brier": 0.0008427148040736003,
+        "count_nll_without_factorial": 0.006366591845515953,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "relationship": {
+        "years": 8289,
+        "positive_years": 14,
+        "events": 14,
+        "binary_log_loss": 0.01252861283844239,
+        "binary_brier": 0.0016857868361558992,
+        "count_nll_without_factorial": 0.012530468552472923,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "other": {
+        "years": 8289,
+        "positive_years": 108,
+        "events": 147,
+        "binary_log_loss": 0.06243645347492641,
+        "binary_brier": 0.012703375240447316,
+        "count_nll_without_factorial": 0.07609373127366613,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "macro_binary_log_loss": 0.026307938338800678,
+      "macro_binary_brier": 0.004738931181629133
+    },
+    "age_plus_history": {
+      "career": {
+        "years": 8289,
+        "positive_years": 31,
+        "events": 44,
+        "binary_log_loss": 0.023843917625773522,
+        "binary_brier": 0.0037246192462563363,
+        "count_nll_without_factorial": 0.03103743219330279,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "recognition": {
+        "years": 8289,
+        "positive_years": 7,
+        "events": 7,
+        "binary_log_loss": 0.006842121011381883,
+        "binary_brier": 0.0008446279022362794,
+        "count_nll_without_factorial": 0.006842769515777467,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "relationship": {
+        "years": 8289,
+        "positive_years": 14,
+        "events": 14,
+        "binary_log_loss": 0.01236374174810339,
+        "binary_brier": 0.001684866713896242,
+        "count_nll_without_factorial": 0.012365893544408632,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "other": {
+        "years": 8289,
+        "positive_years": 108,
+        "events": 147,
+        "binary_log_loss": 0.05871649916615669,
+        "binary_brier": 0.012455406156036677,
+        "count_nll_without_factorial": 0.06855809648227401,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "macro_binary_log_loss": 0.02544156988785387,
+      "macro_binary_brier": 0.004677380004606384
+    }
+  },
+  "interpretation": "Validation diagnostics only: neither independent R6 external test nor person-cluster confidence intervals. Retrospective biography coverage can mimic individual predictability. Do not use for real-life certainty.",
+  "age_binary_history_rates": {
+    "18-24": {
+      "0": {
+        "career": 0.0019187080950403331,
+        "recognition": 0.0007883750354231374,
+        "relationship": 0.0014792911183823998,
+        "other": 0.0030709802682068453
+      },
+      "1+": {
+        "career": 0.004658811971011509,
+        "recognition": 0.003073418685794505,
+        "relationship": 0.0027379601312137406,
+        "other": 0.0395243000240332
+      }
+    },
+    "25-29": {
+      "0": {
+        "career": 0.0018456996150184842,
+        "recognition": 0.0004943878271531282,
+        "relationship": 0.0022401394118467875,
+        "other": 0.008019106978522691
+      },
+      "1+": {
+        "career": 0.010296546672859907,
+        "recognition": 0.00200712565373698,
+        "relationship": 0.0034903994720306203,
+        "other": 0.0562595282864537
+      }
+    },
+    "30-34": {
+      "0": {
+        "career": 0.0028941515573744307,
+        "recognition": 0.0009731568502605051,
+        "relationship": 0.0004301194537948983,
+        "other": 0.00625151614586229
+      },
+      "1+": {
+        "career": 0.016231444580589362,
+        "recognition": 0.002132804022933684,
+        "relationship": 0.003290006925213497,
+        "other": 0.060341133833890434
+      }
+    },
+    "35-37": {
+      "0": {
+        "career": 0.006860827320394398,
+        "recognition": 0.0007810388505255455,
+        "relationship": 0.00042929751011445196,
+        "other": 0.006905449889421517
+      },
+      "1+": {
+        "career": 0.014401010373790707,
+        "recognition": 0.0021010503949347972,
+        "relationship": 0.0020908258284782306,
+        "other": 0.0555405840882075
+      }
+    }
+  }
+}

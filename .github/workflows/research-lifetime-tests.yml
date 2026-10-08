@@ -1,0 +1,117 @@
+name: MingGui lifetime trajectory research tests
+
+on:
+  push:
+    branches:
+      - "research/lifetime-recurrent-v12"
+    paths:
+      - "research/models/lifetime_paths.py"
+      - "research/models/build_annual_recurrent.py"
+      - "research/models/fit_recurrent_lookup.py"
+      - "research/ontology/event_granularity_v1.py"
+      - "research/models/simulate_fitted_lifetime.py"
+      - "research/benchmarks/data/v12_r6_dev_aggregates.json"
+      - "research/benchmarks/results/v12_r6_dev_lookup.json"
+      - "research/benchmarks/data/v12_r6_dev_lifetime_aggregates.json"
+      - "research/benchmarks/results/v12_r6_dev_lifetime_lookup.json"
+      - "tests/test_lifetime_paths.py"
+      - "tests/test_annual_recurrent.py"
+      - "tests/test_fit_recurrent_lookup.py"
+      - "tests/test_simulate_fitted_lifetime.py"
+      - "tests/test_event_granularity.py"
+      - ".github/workflows/research-lifetime-tests.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "research/models/**"
+      - "research/ontology/**"
+      - "research/benchmarks/data/v12_r6_dev_*"
+      - "research/benchmarks/results/v12_r6_dev_*"
+      - "tests/test_*"
+      - ".github/workflows/research-lifetime-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-and-reproduction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run all isolated research unit tests
+        run: |
+          python -m unittest discover -s tests -p "test_lifetime_paths.py" -v
+          python -m unittest discover -s tests -p "test_annual_recurrent.py" -v
+          python -m unittest discover -s tests -p "test_fit_recurrent_lookup.py" -v
+          python -m unittest discover -s tests -p "test_simulate_fitted_lifetime.py" -v
+          python -m unittest discover -s tests -p "test_event_granularity.py" -v
+      - name: Refit R6 lookup using committed train/validation aggregates
+        run: |
+          python research/models/fit_recurrent_lookup.py \
+            research/benchmarks/data/v12_r6_dev_aggregates.json \
+            /tmp/r6-replayed.json
+          python research/models/fit_recurrent_lookup.py \
+            research/benchmarks/data/v12_r6_dev_lifetime_aggregates.json \
+            /tmp/r6-lifetime-replayed.json
+      - name: Verify exact bin rates and validation metrics
+        run: |
+          python - <<'PY'
+          import json, math
+          with open("/tmp/r6-replayed.json") as f: got=json.load(f)
+          with open("research/benchmarks/results/v12_r6_dev_lookup.json") as f: expected=json.load(f)
+          def check(a,b,path="root"):
+              if isinstance(a,dict):
+                  assert isinstance(b,dict),path
+                  for key in b: assert key in a,(path,key)
+                  for key in b: check(a[key],b[key],path+"."+key)
+              elif isinstance(a,(int,float)) and not isinstance(a,bool):
+                  assert isinstance(b,(int,float)),path
+                  assert math.isclose(a,b,rel_tol=1e-11,abs_tol=1e-12),(path,a,b)
+              else: assert a==b,(path,a,b)
+          check(got,expected)
+          with open("/tmp/r6-lifetime-replayed.json") as f: lifetime=json.load(f)
+          with open("research/benchmarks/results/v12_r6_dev_lifetime_lookup.json") as f:
+              lifetime_expected=json.load(f)
+          check(lifetime,lifetime_expected)
+          assert lifetime["supported_ages_inclusive"]==[18,87]
+          print("Reproducibility verified: both 18–37 and 18–87 fits and metrics.")
+          PY
+      - name: Smoke-test 18–87 trajectory rollout with fitted R6 model
+        run: |
+          python research/models/simulate_fitted_lifetime.py \
+            --model research/benchmarks/results/v12_r6_dev_lifetime_lookup.json \
+            --from-age 25 --to-age-exclusive 88 --paths 200 --seed 20261008 \
+            --output /tmp/r6-lifetime-paths-smoke.json
+          python - <<'PY'
+          import json
+          x=json.load(open("/tmp/r6-lifetime-paths-smoke.json"))
+          assert x["not_real_life_guarantee"]
+          assert x["source_observation_bias_not_corrected"]
+          assert x["multi_year_rollout_calibration_not_established"]
+          assert len(x["stagewise_documented_event_probabilities"]["stages"])==7
+          print("Research-only lifetime rollout smoke test passed.")
+          PY
+      - name: Compile R6 research modules
+        run: |
+          python -m py_compile \
+            research/models/lifetime_paths.py \
+            research/models/build_annual_recurrent.py \
+            research/models/fit_recurrent_lookup.py \
+            research/models/simulate_fitted_lifetime.py \
+            research/ontology/event_granularity_v1.py
+      - name: Archive exact training output
+        uses: actions/upload-artifact@v4
+        with:
+          name: minggui-r6-dev-lookup-replayed
+          path: |
+            /tmp/r6-replayed.json
+            /tmp/r6-lifetime-replayed.json
+            /tmp/r6-lifetime-paths-smoke.json
+          retention-days: 30
+          if-no-files-found: error
