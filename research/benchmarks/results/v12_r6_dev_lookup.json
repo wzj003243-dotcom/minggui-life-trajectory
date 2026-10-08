@@ -207,6 +207,46 @@
       "macro_binary_log_loss": 0.02854776462026419,
       "macro_binary_brier": 0.004794505290208578
     },
+    "age_binary_history": {
+      "career": {
+        "years": 8289,
+        "positive_years": 31,
+        "events": 44,
+        "binary_log_loss": 0.023901026105327672,
+        "binary_brier": 0.003723847845839716,
+        "count_nll_without_factorial": 0.03167426285813869,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "recognition": {
+        "years": 8289,
+        "positive_years": 7,
+        "events": 7,
+        "binary_log_loss": 0.006365660936506236,
+        "binary_brier": 0.0008427148040736003,
+        "count_nll_without_factorial": 0.006366591845515953,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "relationship": {
+        "years": 8289,
+        "positive_years": 14,
+        "events": 14,
+        "binary_log_loss": 0.01252861283844239,
+        "binary_brier": 0.0016857868361558992,
+        "count_nll_without_factorial": 0.012530468552472923,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "other": {
+        "years": 8289,
+        "positive_years": 108,
+        "events": 147,
+        "binary_log_loss": 0.06243645347492641,
+        "binary_brier": 0.012703375240447316,
+        "count_nll_without_factorial": 0.07609373127366613,
+        "predicted_event_rate_units": "documented_events_per_person_year"
+      },
+      "macro_binary_log_loss": 0.026307938338800678,
+      "macro_binary_brier": 0.004738931181629133
+    },
     "age_plus_history": {
       "career": {
         "years": 8289,
@@ -248,5 +288,63 @@
       "macro_binary_brier": 0.004677380004606384
     }
   },
-  "interpretation": "Validation diagnostics only: neither independent R6 external test nor person-cluster confidence intervals. Retrospective biography coverage can mimic individual predictability. Do not use for real-life certainty."
+  "interpretation": "Validation diagnostics only: neither independent R6 external test nor person-cluster confidence intervals. Retrospective biography coverage can mimic individual predictability. Do not use for real-life certainty.",
+  "age_binary_history_rates": {
+    "18-24": {
+      "0": {
+        "career": 0.0019187080950403331,
+        "recognition": 0.0007883750354231374,
+        "relationship": 0.0014792911183823998,
+        "other": 0.0030709802682068453
+      },
+      "1+": {
+        "career": 0.004658811971011509,
+        "recognition": 0.003073418685794505,
+        "relationship": 0.0027379601312137406,
+        "other": 0.0395243000240332
+      }
+    },
+    "25-29": {
+      "0": {
+        "career": 0.0018456996150184842,
+        "recognition": 0.0004943878271531282,
+        "relationship": 0.0022401394118467875,
+        "other": 0.008019106978522691
+      },
+      "1+": {
+        "career": 0.010296546672859907,
+        "recognition": 0.00200712565373698,
+        "relationship": 0.0034903994720306203,
+        "other": 0.0562595282864537
+      }
+    },
+    "30-34": {
+      "0": {
+        "career": 0.0028941515573744307,
+        "recognition": 0.0009731568502605051,
+        "relationship": 0.0004301194537948983,
+        "other": 0.00625151614586229
+      },
+      "1+": {
+        "career": 0.016231444580589362,
+        "recognition": 0.002132804022933684,
+        "relationship": 0.003290006925213497,
+        "other": 0.060341133833890434
+      }
+    },
+    "35-37": {
+      "0": {
+        "career": 0.006860827320394398,
+        "recognition": 0.0007810388505255455,
+        "relationship": 0.00042929751011445196,
+        "other": 0.006905449889421517
+      },
+      "1+": {
+        "career": 0.014401010373790707,
+        "recognition": 0.0021010503949347972,
+        "relationship": 0.0020908258284782306,
+        "other": 0.0555405840882075
+      }
+    }
+  }
 }
