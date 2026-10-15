@@ -73,7 +73,7 @@ export function makeReading(input:ReadingInput,cutoffDate:string){
   }).sort((a,b)=>a.age-b.age);
   const totals:{[key in LifeArea]:number}={career:0,relationship:0,recognition:0,other:0};
   for(const e of facts)totals[e.domain]++;
-  const nextStage=age<18?"18-27":age>=88?null:(research.age_bands as string[]).find(b=>{
+  const nextStage=(age<18||age>=88)?null:(research.age_bands as string[]).find(b=>{
     const [lo,hi]=b.split("-").map(Number);
     return age>=lo&&age<=hi;
   }) ?? null;
