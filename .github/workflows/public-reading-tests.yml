@@ -1,0 +1,30 @@
+name: MingGui public reading contract and build
+on:
+  push:
+    branches:
+      - "feat/public-reading-evidence-v1"
+  pull_request:
+    branches:
+      - "research/bazi-interactions-r7b"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  product-and-science:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned dependencies
+        run: npm install
+      - name: Typecheck reading and evidence contract
+        run: npm run typecheck
+      - name: Test frontend and no-probability science guardrails
+        run: npm test
+      - name: Build full Next.js application
+        run: npm run build
