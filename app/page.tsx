@@ -6,8 +6,8 @@ export default function Home() {
           <div className="eyebrow">LIFE TRAJECTORY LAB / 人生轨迹实验室</div>
           <h1>不是“算你会怎样”，<br />而是展开你可能走完的<strong>一生。</strong></h1>
           <p className="lede">
-            命轨把传统八字当作低置信度先验，用已经发生的人生事件校准个体画像，
-            再用大规模人物生平数据寻找相似轨迹。过去用于校准，未来必须提前锁定并接受回测。
+            输入你真实的经历，我们先画出人生轨迹；传统命理只提供明确标注的文化解释，
+            历史数据负责接受科学检验。没有经过验证的结论，不会被包装成你的命运概率。
           </p>
           <div className="actions">
             <a className="button primary" href="/analyze">开始推演</a>
@@ -24,9 +24,9 @@ export default function Home() {
       </section>
 
       <section className="shell manifesto">
-        <article><span>01</span><h2>已然篇</h2><p>先用传统命理解释过去，再逐条核对。命中的规则升权，没命中的规则降权，不把事后解释冒充预测。</p></article>
-        <article><span>02</span><h2>校准篇</h2><p>用少量高信息量问题把“水旺、火弱、冲多”等传统标签翻译成真实行为模式与现实约束。</p></article>
-        <article><span>03</span><h2>未然篇</h2><p>模型展开 3–5 条人生分支，给出年龄阶段、关键节点、机会与风险；每条预测都有时间戳与验证标准。</p></article>
+        <article><span>01</span><h2>已然篇</h2><p>从真实人生年表开始，保留当事人提供的每段经历。回顾只算校准，绝不算预测成功。</p></article>
+        <article><span>02</span><h2>校准篇</h2><p>用简单问题明确未来关注点。传统命理符号与真实生活数据分开，不把五行直接当成心理测验。</p></article>
+        <article><span>03</span><h2>未然篇</h2><p>先展示不同选择对应的未来情景；只有通过独立验证的预测，才允许展示概率和时间范围。</p></article>
       </section>
 
       <section className="shell split">
@@ -35,10 +35,10 @@ export default function Home() {
           <h2>大师感在表层，实验室在底层。</h2>
         </div>
         <div className="principles">
-          <p><b>命理层</b><span>四柱、五行、十神、大运、流年 → 只生成先验。</span></p>
-          <p><b>个人层</b><span>早年事件、行为模式、资源与价值排序 → 收束到具体的人。</span></p>
-          <p><b>案例层</b><span>Wikidata / Pantheon / biographies → 学习人生轨迹而不是背名人。</span></p>
-          <p><b>验证层</b><span>现实 baseline、假生日、时间切分、预测账本 → 错了就记错。</span></p>
+          <p><b>命理层</b><span>四柱、十神、大运、流年 → 可追溯的传统解释，未验证前不进入预测概率。</span></p>
+          <p><b>个人层</b><span>真实发生过的事件与当前目标 → 构成个人资料，不自动等于统计概率。</span></p>
+          <p><b>案例层</b><span>冻结的历史传记数据 → 可重复的事件预测实验，但并不代表一般人群。</span></p>
+          <p><b>验证层</b><span>与年龄基线、假命盘比较，外部人群验证，未来预测必须提前锁定。</span></p>
         </div>
       </section>
     </main>
