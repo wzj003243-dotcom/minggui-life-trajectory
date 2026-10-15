@@ -1,0 +1,74 @@
+{
+  "protocol": "r7b-natal-context-annual-clash-dev-v1",
+  "snapshot": "7fce3b79-ebfc-40b2-a5f0-e91b28db6a02",
+  "train_person_years": 115288,
+  "validation_person_years": 24464,
+  "k_pseudoyears": 200,
+  "models": {
+    "relationship": {
+      "age_only": {
+        "log_loss": 0.05073226176372906,
+        "brier": 0.00908571645363153
+      },
+      "natal_context": {
+        "log_loss": 0.05115121605821423,
+        "brier": 0.009092518585765434
+      },
+      "shift_0": {
+        "log_loss": 0.051300336243086546,
+        "brier": 0.009096238269512386
+      },
+      "shift_1": {
+        "log_loss": 0.051327800719778764,
+        "brier": 0.009096716773412906
+      },
+      "shift_3": {
+        "log_loss": 0.05128252352577724,
+        "brier": 0.009096674585526085
+      },
+      "shift_5": {
+        "log_loss": 0.05131905311078232,
+        "brier": 0.00909813133168172
+      },
+      "validation_positive_years": 225,
+      "validation_person_years": 24464
+    },
+    "career": {
+      "age_only": {
+        "log_loss": 0.14576343296041835,
+        "brier": 0.03222239104514333
+      },
+      "natal_context": {
+        "log_loss": 0.14622218316085794,
+        "brier": 0.03224878637076003
+      },
+      "shift_0": {
+        "log_loss": 0.1464863759107583,
+        "brier": 0.03226629205322957
+      },
+      "shift_1": {
+        "log_loss": 0.14636283923225343,
+        "brier": 0.03225793941842004
+      },
+      "shift_3": {
+        "log_loss": 0.14637408048403128,
+        "brier": 0.03225949599596548
+      },
+      "shift_5": {
+        "log_loss": 0.14642856484152236,
+        "brier": 0.03226242998868494
+      },
+      "validation_positive_years": 816,
+      "validation_person_years": 24464
+    }
+  },
+  "screen_pass": false,
+  "limitations": [
+    "No held-out new person sample; old test untouched but previously inspected",
+    "Only two natal modifiers and annual proxy, NOT actual DaYun",
+    "Uncertainty in Gregorian-vs-LiChun year boundaries",
+    "Selected biographies and historical documentation bias",
+    "No person-level bootstrap available from aggregate-only rows",
+    "No probabilistic forecast weights assigned to traditional symbols"
+  ]
+}
