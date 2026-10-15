@@ -50,6 +50,15 @@ export default async function ResearchPage(){
       </article>
     </section>
 
+    <section className="panel" style={{marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:24,flexWrap:"wrap"}}>
+      <div>
+        <div className="eyebrow">NEW RESEARCH PREVIEW / R7B</div>
+        <h2>命局 × 大运 × 流年 · 可交互推演</h2>
+        <p style={{color:"var(--muted)",lineHeight:1.7}}>拖动年份查看虚构命盘的动态传统规则，并把规则激活与真实验证结果并排比较。R7B 尚未证明新增命理特征能提高预测准确性。</p>
+      </div>
+      <a className="button primary" href="/research/traditional-demo">打开研究效果页 ↗</a>
+    </section>
+
     <section className="tests">
       {tests.map(([a,b])=><article key={a}><small>{a}</small><h3>{b}</h3></article>)}
     </section>
