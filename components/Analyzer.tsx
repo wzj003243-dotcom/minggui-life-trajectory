@@ -8,6 +8,7 @@ import {
   makeReading,validatedBirth,areaNames,eventNames,evidenceDomainNames,
   type PublicReading,type ReadingInput,type RecordedEvent,type PastKind,type DesiredArea
 } from "../lib/public-reading";
+import HistoricalTrajectoryPanel from "./HistoricalTrajectoryPanel";
 import styles from "./public-reading.module.css";
 
 const empty:ReadingInput={
@@ -177,6 +178,8 @@ export default function Analyzer(){
           <p className={styles.sub}>下一次更新时，可把后来真正发生的经历补入年表；旧报告的预测须另外留存，不能事后重写。</p>
         </article>
       </div>
+
+      {r.age>=18&&r.age<=87?<HistoricalTrajectoryPanel fromAge={r.age}/>:null}
 
       <div className={styles.grid}>
         <article className={styles.card}>
