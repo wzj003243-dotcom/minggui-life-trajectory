@@ -1,0 +1,65 @@
+name: MingGui R7B interactions and demo
+on:
+  push:
+    branches:
+      - "research/bazi-interactions-r7b"
+  pull_request:
+    branches:
+      - "research/bazi-compositional-v1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate fixed R7B dataset, splits and placebos
+        run: |
+          python -m unittest discover -s tests -p 'test_evaluate_r7b.py' -v
+          python research/traditional/evaluate_r7b.py \
+            research/traditional/results/r7b_context_grouped.json \
+            /tmp/r7b-replayed.json
+      - name: Verify frozen scores
+        run: |
+          python - <<'PY'
+          import json,math
+          actual=json.load(open('/tmp/r7b-replayed.json'))
+          expected=json.load(open('research/traditional/results/r7b_validation_scores.json'))
+          def same(a,b,path=''):
+            if isinstance(b,dict):
+              assert isinstance(a,dict),path
+              for k,v in b.items():
+                assert k in a, (path,k)
+                same(a[k],v,path+'.'+k)
+            elif isinstance(b,(int,float)) and not isinstance(b,bool):
+              assert math.isclose(a,b,rel_tol=1e-12,abs_tol=1e-12),(path,a,b)
+            else:
+              assert a==b,(path,a,b)
+          same(actual,expected)
+          assert actual['screen_pass'] is False
+          print('Frozen R7B validation metrics reproduced; no positive prediction claim.')
+          PY
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install project dependencies
+        run: npm install
+      - name: Typecheck interactive demo and calendar symbols
+        run: npm run typecheck
+      - name: Unit test calendar, interactions and full application
+        run: npm test
+      - name: Build Next preview page
+        run: npm run build
