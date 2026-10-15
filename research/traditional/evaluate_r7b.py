@@ -18,6 +18,16 @@ ELEMENTS = ("木", "火", "土", "金", "水")
 AGES = ("18-27", "28-37", "38-47", "48-57", "58-67", "68-77", "78-87")
 
 
+def _count(row: dict, col: str) -> int:
+    """SQL SUM(...) FILTER returns NULL when no exposed years; interpret as 0."""
+    value = row[col]
+    if value is None and (col.startswith("relationship_") or col.startswith("career_")):
+        return 0
+    if value is None:
+        raise ValueError("unexpected null in exposure or group count")
+    return int(value)
+
+
 def _metrics(n: int, yes: int, p: float) -> tuple[float, float]:
     p = max(1e-12, min(1 - 1e-12, p))
     return (
@@ -42,11 +52,11 @@ def score(rows: list[dict]) -> dict:
         n = int(row["n"])
         if n <= 0: raise ValueError("nonpositive exposure")
         for domain in DOMAINS:
-            pos = int(row[f"{domain}_cases"])
+            pos = _count(row, f"{domain}_cases")
             if not 0 <= pos <= n: raise ValueError("positive-year count invalid")
             for shift in SHIFTS:
                 expo = int(row[f"exposure_{shift}"])
-                positive_expo = int(row[f"{domain}_{shift}"])
+                positive_expo = _count(row, f"{domain}_{shift}")
                 if not (0 <= expo <= n and
                         0 <= positive_expo <= min(expo, pos) and
                         pos - positive_expo <= n - expo):
@@ -84,11 +94,11 @@ def score(rows: list[dict]) -> dict:
                 arm_totals[arm][1] += br
             for s in SHIFTS:
                 exp_t = t[f"exposure_{s}"]
-                yes_t = t[f"{domain}_{s}"]
+                yes_t = _count(t, f"{domain}_{s}")
                 p1 = (yes_t + K * natal_rate) / (exp_t + K)
                 p0 = (t[key] - yes_t + K * natal_rate) / (t["n"] - exp_t + K)
                 exp_v = val[f"exposure_{s}"]
-                yes_v = val[f"{domain}_{s}"]
+                yes_v = _count(val, f"{domain}_{s}")
                 ll1, br1 = _metrics(exp_v, yes_v, p1)
                 ll0, br0 = _metrics(val["n"]-exp_v, val[key]-yes_v, p0)
                 arm_totals[f"shift_{s}"][0] += ll1 + ll0
