@@ -1,0 +1,223 @@
+{
+  "protocol": "r8-r6-dev-stage-calibration-audit-v1",
+  "source_snapshot": "7fce3b79-ebfc-40b2-a5f0-e91b28db6a02",
+  "validation_person_years": 21449,
+  "training_person_years": 100771,
+  "audit_not_fresh_external_holdout": true,
+  "is_multi_year_trajectory_calibrated": false,
+  "ready_for_personal_life_forecast": false,
+  "engineering_red_flags": 3,
+  "note": "Per-age retrospective documented-event counts only. No real-life event rates, person-cluster uncertainty, prospective outcomes or long-horizon calibration.",
+  "by_age": [
+    {
+      "age_band": "18-27",
+      "validation_person_years": 4234,
+      "domains": {
+        "career": {
+          "actual_documented_records": 18,
+          "age_only_expected_documented_records": 12.321116286984104,
+          "observed_over_expected": 1.460906591638536,
+          "large_descriptive_mismatch": false
+        },
+        "recognition": {
+          "actual_documented_records": 3,
+          "age_only_expected_documented_records": 5.4086871875529665,
+          "observed_over_expected": 0.5546632474704605,
+          "large_descriptive_mismatch": false
+        },
+        "relationship": {
+          "actual_documented_records": 7,
+          "age_only_expected_documented_records": 8.077379365593963,
+          "observed_over_expected": 0.8666177089337763,
+          "large_descriptive_mismatch": false
+        },
+        "other": {
+          "actual_documented_records": 36,
+          "age_only_expected_documented_records": 58.07730763061955,
+          "observed_over_expected": 0.6198634452713517,
+          "large_descriptive_mismatch": false
+        }
+      }
+    },
+    {
+      "age_band": "28-37",
+      "validation_person_years": 4055,
+      "domains": {
+        "career": {
+          "actual_documented_records": 26,
+          "age_only_expected_documented_records": 36.65117565471261,
+          "observed_over_expected": 0.7093906139585707,
+          "large_descriptive_mismatch": false
+        },
+        "recognition": {
+          "actual_documented_records": 4,
+          "age_only_expected_documented_records": 5.265052463022492,
+          "observed_over_expected": 0.7597265227825921,
+          "large_descriptive_mismatch": false
+        },
+        "relationship": {
+          "actual_documented_records": 7,
+          "age_only_expected_documented_records": 7.54062335894107,
+          "observed_over_expected": 0.9283052165309329,
+          "large_descriptive_mismatch": false
+        },
+        "other": {
+          "actual_documented_records": 111,
+          "age_only_expected_documented_records": 123.21379014250178,
+          "observed_over_expected": 0.9008731885580662,
+          "large_descriptive_mismatch": false
+        }
+      }
+    },
+    {
+      "age_band": "38-47",
+      "validation_person_years": 3867,
+      "domains": {
+        "career": {
+          "actual_documented_records": 72,
+          "age_only_expected_documented_records": 94.30895263774978,
+          "observed_over_expected": 0.7634481985666756,
+          "large_descriptive_mismatch": false
+        },
+        "recognition": {
+          "actual_documented_records": 11,
+          "age_only_expected_documented_records": 10.577913573480453,
+          "observed_over_expected": 1.0399026162945542,
+          "large_descriptive_mismatch": false
+        },
+        "relationship": {
+          "actual_documented_records": 8,
+          "age_only_expected_documented_records": 3.8917398757662442,
+          "observed_over_expected": 2.0556358480729346,
+          "large_descriptive_mismatch": false
+        },
+        "other": {
+          "actual_documented_records": 80,
+          "age_only_expected_documented_records": 110.87426590179265,
+          "observed_over_expected": 0.7215380354433222,
+          "large_descriptive_mismatch": false
+        }
+      }
+    },
+    {
+      "age_band": "48-57",
+      "validation_person_years": 3431,
+      "domains": {
+        "career": {
+          "actual_documented_records": 97,
+          "age_only_expected_documented_records": 112.68217687977572,
+          "observed_over_expected": 0.8608282399752754,
+          "large_descriptive_mismatch": false
+        },
+        "recognition": {
+          "actual_documented_records": 9,
+          "age_only_expected_documented_records": 12.26872526946089,
+          "observed_over_expected": 0.7335725433841649,
+          "large_descriptive_mismatch": false
+        },
+        "relationship": {
+          "actual_documented_records": 3,
+          "age_only_expected_documented_records": 2.983505114803518,
+          "observed_over_expected": 1.0055286934534275,
+          "large_descriptive_mismatch": false
+        },
+        "other": {
+          "actual_documented_records": 37,
+          "age_only_expected_documented_records": 99.22335129061234,
+          "observed_over_expected": 0.3728960926912435,
+          "large_descriptive_mismatch": true
+        }
+      }
+    },
+    {
+      "age_band": "58-67",
+      "validation_person_years": 2798,
+      "domains": {
+        "career": {
+          "actual_documented_records": 76,
+          "age_only_expected_documented_records": 64.57827849967659,
+          "observed_over_expected": 1.1768663049818,
+          "large_descriptive_mismatch": false
+        },
+        "recognition": {
+          "actual_documented_records": 9,
+          "age_only_expected_documented_records": 15.183526351466558,
+          "observed_over_expected": 0.5927476787453069,
+          "large_descriptive_mismatch": false
+        },
+        "relationship": {
+          "actual_documented_records": 0,
+          "age_only_expected_documented_records": 2.9005678307521734,
+          "observed_over_expected": 0,
+          "large_descriptive_mismatch": false
+        },
+        "other": {
+          "actual_documented_records": 162,
+          "age_only_expected_documented_records": 72.65664404964993,
+          "observed_over_expected": 2.229665326811644,
+          "large_descriptive_mismatch": true
+        }
+      }
+    },
+    {
+      "age_band": "68-77",
+      "validation_person_years": 1985,
+      "domains": {
+        "career": {
+          "actual_documented_records": 47,
+          "age_only_expected_documented_records": 31.330179852652645,
+          "observed_over_expected": 1.5001509796957209,
+          "large_descriptive_mismatch": false
+        },
+        "recognition": {
+          "actual_documented_records": 7,
+          "age_only_expected_documented_records": 11.158016045813332,
+          "observed_over_expected": 0.627351669979585,
+          "large_descriptive_mismatch": false
+        },
+        "relationship": {
+          "actual_documented_records": 1,
+          "age_only_expected_documented_records": 1.0734121101686809,
+          "observed_over_expected": 0.9316086436204408,
+          "large_descriptive_mismatch": false
+        },
+        "other": {
+          "actual_documented_records": 63,
+          "age_only_expected_documented_records": 54.35481132829001,
+          "observed_over_expected": 1.1590510289787435,
+          "large_descriptive_mismatch": false
+        }
+      }
+    },
+    {
+      "age_band": "78-87",
+      "validation_person_years": 1079,
+      "domains": {
+        "career": {
+          "actual_documented_records": 10,
+          "age_only_expected_documented_records": 6.549656364338982,
+          "observed_over_expected": 1.5267976583393228,
+          "large_descriptive_mismatch": false
+        },
+        "recognition": {
+          "actual_documented_records": 5,
+          "age_only_expected_documented_records": 5.560089375964556,
+          "observed_over_expected": 0.8992661200041604,
+          "large_descriptive_mismatch": false
+        },
+        "relationship": {
+          "actual_documented_records": 2,
+          "age_only_expected_documented_records": 0.8886951804875792,
+          "observed_over_expected": 2.2504904312665537,
+          "large_descriptive_mismatch": false
+        },
+        "other": {
+          "actual_documented_records": 3,
+          "age_only_expected_documented_records": 23.408149043094582,
+          "observed_over_expected": 0.12816049635009488,
+          "large_descriptive_mismatch": true
+        }
+      }
+    }
+  ]
+}
