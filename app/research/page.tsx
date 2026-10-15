@@ -59,6 +59,13 @@ export default async function ResearchPage(){
       <a className="button primary" href="/research/traditional-demo">打开研究效果页 ↗</a>
     </section>
 
+    <section className="panel" style={{marginBottom:20}}>
+      <div className="eyebrow">NEW · R8 TRAJECTORY MODEL</div>
+      <h2>从单年事件，到多阶段记录轨迹</h2>
+      <p>R8 使用真实历史传记训练出的年龄事件率，模拟未来 5、10、20 年可能留下的不同记录序列。它是可复验的研究实验，不是针对个人的预测。现有验证集在部分年龄段仍然出现较大偏差，因此不允许为用户给出未经校准的概率。</p>
+      <p><a className="button primary" href="/analyze">查看带模拟轨迹的命轨书 →</a></p>
+    </section>
+
     <section className="tests">
       {tests.map(([a,b])=><article key={a}><small>{a}</small><h3>{b}</h3></article>)}
     </section>
