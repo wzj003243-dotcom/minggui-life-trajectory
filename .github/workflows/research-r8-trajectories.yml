@@ -1,0 +1,49 @@
+name: R8 cohort-trajectory simulation and calibration gates
+on:
+  push:
+    branches: ["research/r8-evidence-paths-public"]
+  pull_request:
+    branches: ["feat/public-reading-evidence-v1"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Replay R8 historical model validation gates
+        run: |
+          python -m unittest discover -s tests -p 'test_r8_stagewise_calibration.py' -v
+          python research/benchmarks/audit_r8_stagewise_calibration.py \
+            --model research/benchmarks/results/v12_r6_dev_lifetime_lookup.json \
+            --aggregates research/benchmarks/data/v12_r6_dev_lifetime_aggregates.json \
+            --output /tmp/r8_calibration_replayed.json
+      - name: Archive calibration diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: r8-stagewise-calibration-audit
+          path: /tmp/r8_calibration_replayed.json
+          retention-days: 30
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm install
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test all public model guardrails
+        run: npm test
+      - name: Build full Next app
+        run: npm run build
